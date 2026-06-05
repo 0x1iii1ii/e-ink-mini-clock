@@ -36,7 +36,7 @@ void enterPortalMode(bool factory) {
     Serial.println("Starting WiFi + web portal...");
 
     // Longer timeout for factory reset (no config) to give user more time to connect
-    unsigned long timeoutMs = (factory) ? 600000UL : 60000UL;
+    unsigned long timeoutMs = (factory) ? 6000000UL : 60000UL;
 
     // Start WiFi in AP mode and web server for configuration portal
     if (factory) {
@@ -45,7 +45,9 @@ void enterPortalMode(bool factory) {
         showSetupScreen();
     }
     Serial.println("Starting web server...");
-    wifi_init();
+    if (!factory) {
+        wifi_init();
+    }
     web_init();
 
     Serial.println("Portal running — 60 s timeout...");

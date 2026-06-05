@@ -144,10 +144,17 @@ void handleCheckUpdate() {
 void handleStatus() {
   addCORSHeaders();
 
+  struct tm t;
+  if (!getRtcTime(&t)) {
+    Serial.println("RTC read failed");
+    return;
+  }
+
   time_t now;
-  time(&now);
+  now = mktime(&t);
+
   char timeBuf[20];
-  strftime(timeBuf, sizeof(timeBuf), "%H:%M:%S", localtime(&now));
+  snprintf(timeBuf, sizeof(timeBuf), "%d:%d:%d", t.tm_hour, t.tm_min, t.tm_sec);
 
   unsigned long uptimeSec = (millis() - _bootMs) / 1000UL;
   uint32_t d = uptimeSec / 86400;
@@ -163,10 +170,13 @@ void handleStatus() {
   char fsBuf[24];
   snprintf(fsBuf, sizeof(fsBuf), "%u / %u KB", fsUsedKB, fsTotalKB);
 
+  lastRefreshEpoch = now;
+
   // Last refresh timestamp
   char lastRefBuf[20] = "Never";
   if (lastRefreshEpoch > 0)
-    strftime(lastRefBuf, sizeof(lastRefBuf), "%H:%M:%S", localtime(&lastRefreshEpoch));
+    snprintf(lastRefBuf, sizeof(lastRefBuf), "%d:%d:%d", t.tm_hour, t.tm_min, t.tm_sec);
+
   String json = "{";
   json += "\"time\":\"" + String(timeBuf) + "\",";
   json += "\"uptime\":\"" + String(uptimeBuf) + "\",";
@@ -232,7 +242,7 @@ void handleSaveClock() {
     cfg.clockCfg.quietEnd = (uint8_t) constrain(server.arg("quietEnd").toInt(), 0, 23);
 
   // check boxes
-  cfg.clockCfg.hour12 = !server.hasArg("fmt24");
+  cfg.clockCfg.hour12 = server.hasArg("hour12");
   cfg.clockCfg.quietEnabled = server.hasArg("quietEnabled");
   cfg.clockCfg.powerSave = server.hasArg("powerSave");
   cfg.clockCfg.showBattPct = server.hasArg("showBattPct");
@@ -265,8 +275,8 @@ void handleSaveWifi() {
 
 void handleSaveHostname() {
   addCORSHeaders();
-  if (server.hasArg("hostname"))
-    strlcpy(cfg.hostname, server.arg("hostname").c_str(), sizeof cfg.hostname);
+  if (server.hasArg("hostnameVal"))
+    strlcpy(cfg.hostname, server.arg("hostnameVal").c_str(), sizeof(cfg.hostname));
   save_config();
   server.send(200, "application/json", "{\"ok\":true}");
 }

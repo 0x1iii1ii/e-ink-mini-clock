@@ -120,7 +120,7 @@ void save_config() {
     StaticJsonDocument<512> doc;
     doc["ssid"] = cfg.wifi->ssid;
     doc["password"] = cfg.wifi->password;
-    doc["hostname"] = cfg.hostname;
+    doc["hostnameVal"] = cfg.hostname;
     doc["utcOffset"] = cfg.clockCfg.utcOffset;
     doc["refreshMin"] = cfg.clockCfg.refreshMin;
     doc["ntpSyncDays"] = cfg.clockCfg.ntpSyncDays;
@@ -137,6 +137,9 @@ void save_config() {
     // // Persist NTP schedule so it survives a full power cycle
     // doc["ntpEpoch"] = rtcNvLastNtpEpoch;
     // doc["ntpPending"] = rtcNvNtpPending;
+    Serial.println("json config updated:");
+    serializeJsonPretty(doc, Serial);
+
     serializeJson(doc, f);
     f.close();
 }
@@ -163,7 +166,7 @@ void erase_config() {
 
 void wifi_init() {
     WiFi.setHostname(cfg.hostname);
-    if (strlen(cfg.wifi->ssid) > 0) {
+    if (strlen(cfg.wifi->ssid) > 0 && strlen(cfg.wifi->password) > 0) {
         WiFi.mode(WIFI_STA);
         WiFi.begin(cfg.wifi->ssid, cfg.wifi->password);
         unsigned long t0 = millis();
@@ -172,8 +175,13 @@ void wifi_init() {
             Serial.print('.');
         }
     }
+    else {
+        Serial.println("No WiFi credentials, going offline");
+    }
+
     if (WiFi.status() == WL_CONNECTED) {
         Serial.println("\nWiFi: " + WiFi.localIP().toString());
+        Serial.println(String("Hostname: ") + WiFi.getHostname());
         MDNS.begin(cfg.hostname);
         sync_time();
     }

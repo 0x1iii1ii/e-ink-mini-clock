@@ -95,15 +95,16 @@
       setVal('ntpReSyncDays', d.ntpReSyncDays);
       setVal('quietStart', d.quietStart);
       setVal('quietEnd', d.quietEnd);
-      setCheck('hour12', !d.hour12);
+      setCheck('hour12', d.hour12);
       setCheck('quietEnabled', d.quietEnabled);
       setCheck('powerSave', d.powerSave);
       setCheck('showBattPct', d.showBattPct);
       setCheck('showHum', d.showHum);
       setCheck('showTemp', d.showTemp);
       setCheck('showRSSI', d.showRSSI);
-      setVal('hostname', d.hostname);
       setVal('ssid', d.ssid);
+      setText('hostNameSide', d.hostname);
+      setText('currentHostname', d.hostname);
     })
     .catch(function () { });
 
@@ -125,7 +126,9 @@
         setText('flashVal', d.flashMB + ' MB');
         setText('fsVal', d.fs);
         setText('uptimeVal2', d.uptime);
+        setText('uptimeVal', d.uptime);
         setText('rssiVal', d.rssi + ' dBm');
+        setText('rssiVal2', d.rssi + ' dBm');
         setText('lastRefresh', d.lastRefresh);
         setText('cpuVal', d.cpu + ' MHz');
         setText('chipVal', d.chip);
@@ -263,7 +266,7 @@
       e.preventDefault();
       var fd = new FormData(clockForm);
       // Manually add unchecked checkboxes as absent (default HTML behaviour)
-      fetch("/save-clock", { method: "POST", body: fd })
+      fetch("/save-clock", { method: "POST", body: new URLSearchParams(fd) })
         .then(function (r) {
           return r.json();
         })
@@ -307,7 +310,7 @@
   if (hostnameBtn) {
     hostnameBtn.addEventListener("click", function () {
       var fd = new FormData();
-      fd.append("hostname", el("hostname").value);
+      fd.append("hostnameVal", el("hostnameVal").value);
       fetch("/save-hostname", { method: "POST", body: fd })
         .then(function (r) {
           return r.json();

@@ -908,7 +908,17 @@
         padding: 9px 13px;
         background: var(--surface);
         border: 1px solid var(--border);
-        border-radius: 10px
+        border-radius: 8px
+    }
+
+    .info-display {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-family: 'DM Mono', monospace;
+        font-size: 13px;
+        color: var(--accent);
     }
 
     .info-key {

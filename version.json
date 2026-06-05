@@ -1,0 +1,5 @@
+{
+  "version": "v1.0.1",
+  "url": "https://your-server.com/firmware/eink_clock_v1.4.0.bin",
+  "notes": "Fixed NTP retry logic"
+}
