@@ -1,0 +1,6 @@
+nvs - 20 KB
+otadata - 8 KB
+app0 - 1536 KB (1.875 MB)
+app1 - 1536 KB (1.875 MB)
+coredump - 64 KB
+spiffs - 128 KB

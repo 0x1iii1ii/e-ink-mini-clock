@@ -1,0 +1,1055 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>ESP ePaper Clock · Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="style.css" />
+  </head>
+
+  <body>
+    <div class="wrap">
+      <!-- Header bar -->
+      <div class="portal-header">
+        <div class="brand-icon">🔰</div>
+        <div class="brand-text">
+          <h1>ePaper Desk Clock - Web Dasboard</h1>
+          <p>// ESP32-C3 · SSD1680 · 2.66&quot; Tri-Color</p>
+        </div>
+        <div class="header-stats">
+          <div class="hstat">
+            <div class="hstat-icon" id="batIcon">🔋</div>
+            <div class="hstat-body">
+              <div class="hstat-label">Battery</div>
+              <div class="hstat-val" id="batVal">--%</div>
+            </div>
+          </div>
+          <div class="hstat">
+            <div class="hstat-icon">❄️</div>
+            <div class="hstat-body">
+              <div class="hstat-label">Temperature</div>
+              <div class="hstat-val" id="tempVal">--°C</div>
+            </div>
+          </div>
+          <div class="hstat">
+            <div class="hstat-icon">💧</div>
+            <div class="hstat-body">
+              <div class="hstat-label">Humidity</div>
+              <div class="hstat-val" id="humVal">--%</div>
+            </div>
+          </div>
+          <div class="hstat">
+            <div class="hstat-icon">🕐</div>
+            <div class="hstat-body">
+              <div class="hstat-label">Time</div>
+              <div class="hstat-val" id="liveTime">--:--:--</div>
+            </div>
+          </div>
+          <div class="hstat">
+            <div class="hstat-icon">📶</div>
+            <div class="hstat-body">
+              <div class="hstat-label">Signal</div>
+              <div class="hstat-val ok">
+                -62 dBm
+                <span class="inline-bars">
+                  <span class="ib1 on"></span><span class="ib2 on"></span
+                  ><span class="ib3 on"></span><span class="ib4"></span>
+                </span>
+              </div>
+            </div>
+          </div>
+          <div class="hstat">
+            <div class="hstat-icon">⏳</div>
+            <div class="hstat-body">
+              <div class="hstat-label">Uptime</div>
+              <div class="hstat-val" id="uptimeVal">0d 00:00:00</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="mobile-stat-strip">
+        <div class="mstat">
+          <span class="mstat-icon" id="batIconM">🔋</span>
+          <span class="mstat-val" id="batValM">--%</span>
+        </div>
+        <div class="mstat-divider"></div>
+        <div class="mstat">
+          <span class="mstat-icon">❄️</span>
+          <span class="mstat-val" id="tempValM">--°C</span>
+        </div>
+        <div class="mstat-divider"></div>
+        <div class="mstat">
+          <span class="mstat-icon">💧</span>
+          <span class="mstat-val" id="humValM">--%</span>
+        </div>
+        <div class="mstat-divider"></div>
+        <div class="mstat">
+          <span class="mstat-icon">📶</span>
+          <span class="mstat-val" id="rssiValM">-- dBm</span>
+        </div>
+      </div>
+      <!-- Body: sidebar + panels -->
+      <div class="portal-body">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+          <button class="tab-btn active" data-tab="clock">
+            <span class="tb-icon">🕒</span>Clock
+          </button>
+          <button class="tab-btn" data-tab="wifi">
+            <span class="tb-icon">🛜</span>WiFi
+          </button>
+          <button class="tab-btn" data-tab="device">
+            <span class="tb-icon">🌐</span>Hostname
+          </button>
+          <button class="tab-btn" data-tab="actions">
+            <span class="tb-icon">⚙️</span>Controls
+          </button>
+          <button class="tab-btn" data-tab="ota">
+            <span class="tb-icon">🔄</span>OTA
+          </button>
+          <button class="tab-btn" data-tab="deviceinfo">
+            <span class="tb-icon">ℹ️</span>Info
+          </button>
+          <button class="tab-btn" data-tab="demo">
+            <span class="tb-icon">🧪</span>UI Demo
+          </button>
+          <div class="sidebar-foot">
+            <span class="portal-ip-side" id="ipAddrValSide">-</span>
+            <br />
+            <span class="portal-ip-side" id="hostNameSide">-</span>
+          </div>
+        </nav>
+
+        <!-- Tab panels -->
+        <div class="tab-pane-wrap">
+          <!-- Mobile status bar (shown only on phone) -->
+          <div class="status-bar">
+            <div class="stat-pill">
+              <div class="stat-pill-icon">🕐</div>
+              <div class="stat-pill-body">
+                <div class="stat-pill-label">Current Time</div>
+                <div class="stat-pill-val" id="liveTimeMobile">--:--:--</div>
+              </div>
+            </div>
+            <div class="stat-pill">
+              <div class="stat-pill-icon">📶</div>
+              <div class="stat-pill-body">
+                <div class="stat-pill-label">WiFi Signal</div>
+                <div class="stat-pill-val ok">
+                  -62 dBm
+                  <span class="inline-bars"
+                    ><span class="ib1 on"></span><span class="ib2 on"></span
+                    ><span class="ib3 on"></span><span class="ib4"></span
+                  ></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Clock -->
+          <div class="tab-panel active" id="panel-clock">
+            <div class="card">
+              <div class="card-title">
+                <h2>Clock Settings</h2>
+                <span class="card-title-tag">NTP · Display</span>
+              </div>
+              <form method="POST" action="/save-clock">
+                <div class="field-row">
+                  <div class="field">
+                    <label for="utcOffset">UTC Offset (hours)</label>
+                    <input
+                      type="number"
+                      id="utcOffset"
+                      name="utcOffset"
+                      min="-12"
+                      max="14"
+                      value="7"
+                      placeholder="+7"
+                    />
+                  </div>
+                  <div class="field">
+                    <label for="refreshMin"
+                      >Display Refresh Interval (minutes)</label
+                    >
+                    <input
+                      type="number"
+                      id="refreshMin"
+                      name="refreshMin"
+                      min="1"
+                      max="60"
+                      value="5"
+                      placeholder="5"
+                    />
+                  </div>
+                  <div class="field">
+                    <label for="ntpSyncDays">NTP Sync Interval (days)</label>
+                    <input
+                      type="number"
+                      id="ntpSyncDays"
+                      name="ntpSyncDays"
+                      min="1"
+                      max="7"
+                      value="7"
+                      placeholder="7"
+                    />
+                  </div>
+                  <div class="field">
+                    <label for="ntpRetryDays"
+                      >NTP Sync Retry Interval (days)</label
+                    >
+                    <input
+                      type="number"
+                      id="ntpRetryDays"
+                      name="ntpRetryDays"
+                      min="1"
+                      max="3"
+                      value="1"
+                      placeholder="1"
+                    />
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Sleep Hours (24-hour format)</label>
+
+                  <div class="sleep-grid">
+                    <div>
+                      <input
+                        type="number"
+                        id="quietStart"
+                        name="quietStart"
+                        min="0"
+                        max="23"
+                        value="23"
+                        placeholder="23"
+                      />
+                      <div class="sleep-label">Start</div>
+                    </div>
+
+                    <div>
+                      <input
+                        type="number"
+                        id="quietEnd"
+                        name="quietEnd"
+                        min="0"
+                        max="23"
+                        value="7"
+                        placeholder="7"
+                      />
+                      <div class="sleep-label">End</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="toggle-field">
+                  <div>
+                    <div class="toggle-label">Use 24-Hour Format</div>
+                    <div class="toggle-sub">
+                      Switch between 12-hour(AM/PM) or 24-hour format
+                    </div>
+                  </div>
+                  <label class="switch"
+                    ><input type="checkbox" id="hour12" name="hour12" /><span
+                      class="slider"
+                    ></span
+                  ></label>
+                </div>
+                <div class="toggle-field">
+                  <div>
+                    <div class="toggle-label">Use Sleep Hours</div>
+                    <div class="toggle-sub">
+                      Let your clock sleep during inactive time
+                    </div>
+                  </div>
+                  <label class="switch"
+                    ><input
+                      type="checkbox"
+                      id="quietEnabled"
+                      name="quietEnabled" /><span class="slider"></span
+                  ></label>
+                </div>
+                <div class="toggle-field">
+                  <div>
+                    <div class="toggle-label">Enable Power Saving Mode</div>
+                    <div class="toggle-sub">
+                      Using Deepsleep feature to save battery life
+                    </div>
+                  </div>
+                  <label class="switch"
+                    ><input
+                      type="checkbox"
+                      id="powerSave"
+                      name="powerSave" /><span class="slider"></span
+                  ></label>
+                </div>
+                <div class="toggle-field">
+                  <div>
+                    <div class="toggle-label">Show Battery Percentage</div>
+                    <div class="toggle-sub">
+                      Show battery percentage next to battery icon
+                    </div>
+                  </div>
+                  <label class="switch"
+                    ><input
+                      type="checkbox"
+                      id="showBattPct"
+                      name="showBattPct" /><span class="slider"></span
+                  ></label>
+                </div>
+                <div class="toggle-field">
+                  <div>
+                    <div class="toggle-label">Show Humidity</div>
+                    <div class="toggle-sub">Show Humidity on the display</div>
+                  </div>
+                  <label class="switch"
+                    ><input
+                      type="checkbox"
+                      id="showHum"
+                      name="showHum"
+                      checked /><span class="slider"></span
+                  ></label>
+                </div>
+                <div class="toggle-field" style="margin-bottom: 16px">
+                  <div>
+                    <div class="toggle-label">Show Temperature</div>
+                    <div class="toggle-sub">
+                      Show Temperature on the display
+                    </div>
+                  </div>
+                  <label class="switch"
+                    ><input
+                      type="checkbox"
+                      id="showTemp"
+                      name="showTemp"
+                      checked /><span class="slider"></span
+                  ></label>
+                </div>
+                <div class="toggle-field" style="margin-bottom: 16px">
+                  <div>
+                    <div class="toggle-label">Show Wi-Fi Signal</div>
+                    <div class="toggle-sub">
+                      Show Wi-Fi signal strength on the display
+                    </div>
+                  </div>
+                  <label class="switch"
+                    ><input
+                      type="checkbox"
+                      id="showRSSI"
+                      name="showRSSI"
+                      checked /><span class="slider"></span
+                  ></label>
+                </div>
+                <button type="submit" class="btn-save">
+                  Save Clock Settings
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <!-- ② WiFi -->
+          <div class="tab-panel" id="panel-wifi">
+            <div class="card">
+              <div class="card-title">
+                <h2>WiFi Setup</h2>
+                <span class="card-title-tag">WPA2 · STA</span>
+              </div>
+              <div class="slabel">Available Networks</div>
+              <div class="nets" id="nets">
+                <div class="net sel" data-ssid="HomeNetwork_5G">
+                  <span class="net-name">HomeNetwork_5G</span>
+                  <span class="net-meta"
+                    ><span class="lock">🔒</span
+                    ><span class="bars"
+                      ><span class="b1 on"></span><span class="b2 on"></span
+                      ><span class="b3 on"></span
+                      ><span class="b4 on"></span></span
+                  ></span>
+                </div>
+                <div class="net" data-ssid="Guest_WiFi">
+                  <span class="net-name">Guest_WiFi</span>
+                  <span class="net-meta"
+                    ><span class="lock">🔒</span
+                    ><span class="bars"
+                      ><span class="b1 on"></span><span class="b2 on"></span
+                      ><span class="b3"></span><span class="b4"></span></span
+                  ></span>
+                </div>
+                <div class="net" data-ssid="OpenNet">
+                  <span class="net-name">OpenNet</span>
+                  <span class="net-meta"
+                    ><span class="bars"
+                      ><span class="b1 on"></span><span class="b2"></span
+                      ><span class="b3"></span><span class="b4"></span></span
+                  ></span>
+                </div>
+              </div>
+              <form method="POST" action="/save-wifi">
+                <div class="divider">
+                  <hr />
+                  <span>or enter manually</span>
+                  <hr />
+                </div>
+                <div class="field">
+                  <label for="ssid">Network Name (SSID)</label>
+                  <input
+                    type="text"
+                    id="ssid"
+                    name="ssid"
+                    placeholder="Select above or type here"
+                    required
+                    autocomplete="off"
+                    spellcheck="false"
+                  />
+                </div>
+                <div class="field">
+                  <label for="pass">Password</label>
+                  <div class="pw-wrap">
+                    <input
+                      type="password"
+                      id="pass"
+                      name="pass"
+                      placeholder="Leave empty for open networks"
+                      autocomplete="off"
+                    />
+                    <button
+                      type="button"
+                      class="eye-btn"
+                      id="eyeBtn"
+                      title="Show / hide"
+                    >
+                      ●
+                    </button>
+                  </div>
+                </div>
+                <button type="submit" class="btn-save">
+                  Save &amp; Connect
+                </button>
+              </form>
+              <div class="card-foot">
+                <a
+                  href="/reset"
+                  onclick="
+                    return confirm(
+                      'Clear saved WiFi credentials and restart into setup mode?',
+                    );
+                  "
+                  >Clear saved credentials</a
+                >
+              </div>
+            </div>
+          </div>
+
+          <!-- ③ Device -->
+          <div class="tab-panel" id="panel-device">
+            <div class="card">
+              <div class="card-title">
+                <h2>Hostname</h2>
+                <span class="card-title-tag">Hostname Settings</span>
+              </div>
+              <div class="field" style="margin-bottom: 14px">
+                <label for="hostname"
+                  >Set Hostname (to access your clock at:
+                  yourhostname.local)</label
+                >
+                <input
+                  type="text"
+                  id="hostname"
+                  name="hostname"
+                  value="esp-eink-clock"
+                  placeholder="esp-eink-clock"
+                  autocomplete="off"
+                  spellcheck="false"
+                />
+              </div>
+              <button
+                type="button"
+                class="btn-save"
+                style="margin-bottom: 16px"
+                onclick="alert('Hostname saved (demo)')"
+              >
+                Save Hostname
+              </button>
+            </div>
+          </div>
+
+          <!-- ④ Actions -->
+          <div class="tab-panel" id="panel-actions">
+            <div class="card">
+              <div class="card-title">
+                <h2>Controls</h2>
+                <span class="card-title-tag">Controls</span>
+              </div>
+              <div style="margin: 18px 0 12px">
+                <div class="slabel">Quick Controls</div>
+              </div>
+              <div class="btn-grid">
+                <button
+                  class="btn-action primary"
+                  onclick="doAction('refresh', 'Force e-paper refresh?')"
+                >
+                  Refresh Display
+                </button>
+                <button
+                  class="btn-action primary"
+                  onclick="doAction('sync', 'Force NTP sync now?')"
+                >
+                  Sync NTP
+                </button>
+                <button
+                  class="btn-action"
+                  onclick="doAction('clear', 'Clear display to white?')"
+                >
+                  Clear Display
+                </button>
+                <button
+                  class="btn-action"
+                  onclick="doAction('info', 'Open serial monitor in browser?')"
+                >
+                  Serial Log
+                </button>
+                <button
+                  class="btn-action danger"
+                  onclick="doAction('restart', 'Restart device now?')"
+                >
+                  Restart
+                </button>
+                <button
+                  class="btn-action danger"
+                  onclick="
+                    doAction(
+                      'factory',
+                      'reset user data? This will erase all settings!',
+                    )
+                  "
+                >
+                  User Reset
+                </button>
+              </div>
+            </div>
+          </div>
+          <!-- OTA Panel -->
+          <div class="tab-panel" id="panel-ota">
+            <div class="card">
+              <div class="card-title">
+                <h2>OTA Firmware Update</h2>
+                <span class="card-title-tag">Update</span>
+              </div>
+
+              <!-- Current version + check update -->
+              <div class="info-rows" style="margin-bottom: 16px">
+                <div class="info-row">
+                  <span class="info-key">Current Version</span
+                  ><span class="info-val accent" id="otaCurVer">v1.3.0</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-key">Latest Version</span
+                  ><span class="info-val" id="otaLatestVer">—</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-key">Status</span
+                  ><span class="info-val" id="otaCheckStatus">Not checked</span>
+                </div>
+              </div>
+              <button
+                class="btn-action primary"
+                style="width: 100%; margin-bottom: 16px"
+                onclick="checkOtaUpdate()"
+              >
+                <span class="ba-icon">🔍</span>Check for Update
+              </button>
+              <div
+                class="alert alert-ok ota-hidden"
+                id="otaUpdateAlert"
+                style="margin-bottom: 12px"
+              ></div>
+              <div class="alert alert-warn" style="margin-bottom: 12px">
+                A new version is available — tap below to update automatically.
+              </div>
+              <button
+                class="btn-save"
+                style="margin-bottom: 8px"
+                onclick="startServerOTA()"
+              >
+                Download & Install from Server
+              </button>
+              <div
+                class="ota-bar-wrap ota-hidden"
+                id="otaServerProgress"
+                style="margin-bottom: 16px"
+              >
+                <div class="ota-bar-label">
+                  <span id="otaServerLabel">Downloading…</span
+                  ><span id="otaServerPct"></span>
+                </div>
+                <div class="ota-track">
+                  <div class="ota-fill" id="otaServerFill"></div>
+                </div>
+              </div>
+              <div class="divider">
+                <hr />
+                <span>update via URL</span>
+                <hr />
+              </div>
+
+              <!-- HTTPS URL OTA -->
+              <div class="field">
+                <label for="otaUrl">Firmware URL (.bin)</label>
+                <input
+                  type="text"
+                  id="otaUrl"
+                  placeholder="https://example.com/firmware.bin"
+                  autocomplete="off"
+                  spellcheck="false"
+                />
+              </div>
+              <button
+                class="btn-save"
+                style="margin-bottom: 16px"
+                onclick="startUrlOTA()"
+              >
+                Flash from URL
+              </button>
+
+              <div class="divider">
+                <hr />
+                <span>update via file</span>
+                <hr />
+              </div>
+
+              <!-- Local file OTA (existing, improved) -->
+              <div class="field">
+                <label>Firmware .bin file</label>
+                <div style="display: flex; gap: 8px; align-items: center">
+                  <input
+                    type="text"
+                    id="otaFilename"
+                    placeholder="No file selected"
+                    readonly
+                    style="cursor: pointer; flex: 1"
+                    onclick="document.getElementById('firmware').click()"
+                  />
+                  <button
+                    class="btn-action"
+                    style="flex-shrink: 0; padding: 10px 14px"
+                    onclick="document.getElementById('firmware').click()"
+                  >
+                    Open
+                  </button>
+                </div>
+                <input
+                  type="file"
+                  id="firmware"
+                  name="firmware"
+                  accept=".bin"
+                  style="display: none"
+                />
+              </div>
+              <div
+                class="ota-bar-wrap ota-hidden"
+                id="otaProgress"
+                style="margin-bottom: 12px"
+              >
+                <div class="ota-bar-label">
+                  <span id="otaProgressLabel">Uploading…</span
+                  ><span id="otaPct">0%</span>
+                </div>
+                <div class="ota-track">
+                  <div class="ota-fill" id="otaFill"></div>
+                </div>
+              </div>
+              <button class="btn-save" onclick="startOTA()">
+                Flash from File
+              </button>
+            </div>
+          </div>
+
+          <!-- Device Info -->
+          <div class="tab-panel" id="panel-deviceinfo">
+            <div class="card">
+              <div class="card-title">
+                <h2>System Info</h2>
+                <span class="card-title-tag">System Info</span>
+              </div>
+              <div class="info-grid">
+                <div class="info-row">
+                  <span class="info-key">Firmware</span>
+                  <span class="info-val accent" id="fwVerVal">-</span>
+                </div>
+
+                <div class="info-row">
+                  <span class="info-key">MAC Address</span>
+                  <span class="info-val" id="macVal">-</span>
+                </div>
+
+                <div class="info-row">
+                  <span class="info-key">IP Address</span>
+                  <span class="info-val ok" id="ipAddrVal">-</span>
+                </div>
+
+                <div class="info-row">
+                  <span class="info-key">Free Heap</span>
+                  <span class="info-val" id="heapVal">-</span>
+                </div>
+
+                <div class="info-row">
+                  <span class="info-key">Flash Size</span>
+                  <span class="info-val" id="flashVal">-</span>
+                </div>
+
+                <div class="info-row">
+                  <span class="info-key">FS Used</span>
+                  <span class="info-val" id="fsVal">-</span>
+                </div>
+
+                <div class="info-row">
+                  <span class="info-key">Uptime</span>
+                  <span class="info-val" id="uptimeVal2">-</span>
+                </div>
+
+                <div class="info-row">
+                  <span class="info-key">WiFi RSSI</span>
+                  <span class="info-val" id="rssiVal">-</span>
+                </div>
+
+                <div class="info-row">
+                  <span class="info-key">NTP Status</span>
+                  <span class="info-val ok" id="ntpVal">-</span>
+                </div>
+
+                <div class="info-row">
+                  <span class="info-key">Display</span>
+                  <span class="info-val" id="disDrvVal">
+                    SSD1680 · 2.66&quot; B/W/R
+                  </span>
+                </div>
+
+                <div class="info-row">
+                  <span class="info-key">Last Refresh</span>
+                  <span class="info-val" id="lastRefresh">-</span>
+                </div>
+
+                <div class="info-row">
+                  <span class="info-key">CPU Frequency</span>
+                  <span class="info-val" id="cpuVal">-</span>
+                </div>
+
+                <div class="info-row">
+                  <span class="info-key">Chip Model</span>
+                  <span class="info-val" id="chipVal">-</span>
+                </div>
+
+                <div class="info-row">
+                  <span class="info-key">SDK Version</span>
+                  <span class="info-val" id="sdkVal">-</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ⑤ UI Demo -->
+          <div class="tab-panel" id="panel-demo">
+            <div class="card">
+              <div class="card-title">
+                <span class="card-title-icon">🧪</span>
+                <h2>UI Component Demo</h2>
+                <span class="card-title-tag">Reference</span>
+              </div>
+
+              <!-- Alerts -->
+              <div class="slabel" style="margin-bottom: 8px">Alerts</div>
+              <div class="alert alert-ok" style="margin-bottom: 8px">
+                ✓ Success — settings saved successfully.
+              </div>
+              <div class="alert alert-warn" style="margin-bottom: 8px">
+                ⚠ Warning — battery below 20%.
+              </div>
+              <div class="alert alert-er" style="margin-bottom: 16px">
+                ✗ Error — NTP sync failed.
+              </div>
+
+              <!-- Text inputs -->
+              <div class="slabel" style="margin-bottom: 8px">Text Inputs</div>
+              <div class="field">
+                <label>Plain text</label>
+                <input type="text" placeholder="Enter some text…" />
+              </div>
+              <div class="field">
+                <label>Password</label>
+                <div class="pw-wrap">
+                  <input
+                    type="password"
+                    id="demoPass"
+                    placeholder="Enter password…"
+                  />
+                  <button
+                    type="button"
+                    class="eye-btn"
+                    onclick="
+                      var i = document.getElementById('demoPass');
+                      i.type = i.type === 'password' ? 'text' : 'password';
+                      this.textContent = i.type === 'password' ? '●' : '○';
+                    "
+                  >
+                    ●
+                  </button>
+                </div>
+              </div>
+              <div class="field">
+                <label>Number</label>
+                <input type="number" value="42" min="0" max="100" />
+              </div>
+
+              <!-- Dropdown -->
+              <div class="slabel" style="margin-bottom: 8px">Dropdown</div>
+              <div class="field">
+                <label>Select option</label>
+                <select
+                  id="demoSelect"
+                  onchange="
+                    document.getElementById('demoSelectVal').textContent =
+                      this.value
+                  "
+                >
+                  <option value="">— choose —</option>
+                  <option value="epaper">E-Paper 2.66&quot;</option>
+                  <option value="oled">OLED 0.96&quot;</option>
+                  <option value="tft">TFT 1.8&quot;</option>
+                  <option value="lcd">LCD 16x2</option>
+                </select>
+              </div>
+              <div class="info-row" style="margin-bottom: 16px">
+                <span class="info-key">Selected value</span>
+                <span class="info-val accent" id="demoSelectVal">—</span>
+              </div>
+
+              <!-- Range sliders -->
+              <div class="slabel" style="margin-bottom: 8px">Range Sliders</div>
+              <div class="field">
+                <label>Brightness — <span id="brightnessVal">70</span>%</label>
+                <input
+                  type="range"
+                  id="brightnessSlider"
+                  min="0"
+                  max="100"
+                  value="70"
+                  style="
+                    width: 100%;
+                    accent-color: var(--accent);
+                    cursor: pointer;
+                  "
+                  oninput="
+                    document.getElementById('brightnessVal').textContent =
+                      this.value
+                  "
+                />
+              </div>
+              <div class="field">
+                <label>Contrast — <span id="contrastVal">50</span>%</label>
+                <input
+                  type="range"
+                  id="contrastSlider"
+                  min="0"
+                  max="100"
+                  value="50"
+                  style="
+                    width: 100%;
+                    accent-color: var(--accent);
+                    cursor: pointer;
+                  "
+                  oninput="
+                    document.getElementById('contrastVal').textContent =
+                      this.value
+                  "
+                />
+              </div>
+
+              <!-- Toggles -->
+              <div class="slabel" style="margin-bottom: 8px">
+                Toggle Switches
+              </div>
+              <div class="toggle-field">
+                <div>
+                  <div class="toggle-label">Feature Alpha</div>
+                  <div class="toggle-sub">Enable experimental mode</div>
+                </div>
+                <label class="switch"
+                  ><input type="checkbox" checked /><span class="slider"></span
+                ></label>
+              </div>
+              <div class="toggle-field" style="margin-bottom: 16px">
+                <div>
+                  <div class="toggle-label">Feature Beta</div>
+                  <div class="toggle-sub">Off by default</div>
+                </div>
+                <label class="switch"
+                  ><input type="checkbox" /><span class="slider"></span
+                ></label>
+              </div>
+
+              <!-- Radio buttons -->
+              <div class="slabel" style="margin-bottom: 8px">Radio Group</div>
+              <div
+                style="
+                  display: flex;
+                  flex-direction: column;
+                  gap: 6px;
+                  margin-bottom: 16px;
+                "
+                id="demoRadio"
+              >
+                <label
+                  class="toggle-field"
+                  style="cursor: pointer; margin-bottom: 0"
+                >
+                  <div>
+                    <div class="toggle-label">Option A — NTP only</div>
+                    <div class="toggle-sub">Sync from internet</div>
+                  </div>
+                  <input
+                    type="radio"
+                    name="timeSource"
+                    value="ntp"
+                    checked
+                    style="
+                      width: 18px;
+                      height: 18px;
+                      accent-color: var(--accent);
+                      flex-shrink: 0;
+                      cursor: pointer;
+                    "
+                  />
+                </label>
+                <label
+                  class="toggle-field"
+                  style="cursor: pointer; margin-bottom: 0"
+                >
+                  <div>
+                    <div class="toggle-label">Option B — RTC only</div>
+                    <div class="toggle-sub">Use hardware clock</div>
+                  </div>
+                  <input
+                    type="radio"
+                    name="timeSource"
+                    value="rtc"
+                    style="
+                      width: 18px;
+                      height: 18px;
+                      accent-color: var(--accent);
+                      flex-shrink: 0;
+                      cursor: pointer;
+                    "
+                  />
+                </label>
+                <label
+                  class="toggle-field"
+                  style="cursor: pointer; margin-bottom: 0"
+                >
+                  <div>
+                    <div class="toggle-label">Option C — NTP + RTC</div>
+                    <div class="toggle-sub">Sync NTP, fallback to RTC</div>
+                  </div>
+                  <input
+                    type="radio"
+                    name="timeSource"
+                    value="both"
+                    style="
+                      width: 18px;
+                      height: 18px;
+                      accent-color: var(--accent);
+                      flex-shrink: 0;
+                      cursor: pointer;
+                    "
+                  />
+                </label>
+              </div>
+
+              <!-- Info rows -->
+              <div class="slabel" style="margin-bottom: 8px">Info Rows</div>
+              <div class="info-rows" style="margin-bottom: 16px">
+                <div class="info-row">
+                  <span class="info-key">String value</span
+                  ><span class="info-val">esp-eink-clock</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-key">Good status</span
+                  ><span class="info-val ok">Online</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-key">Bad status</span
+                  ><span class="info-val er">Offline</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-key">Accent value</span
+                  ><span class="info-val accent">v1.3.0</span>
+                </div>
+              </div>
+
+              <!-- Button variants -->
+              <div class="slabel" style="margin-bottom: 8px">Buttons</div>
+              <button
+                class="btn-save"
+                style="margin-bottom: 8px"
+                onclick="showAlert('Primary button clicked!', 'ok')"
+              >
+                💾 Primary Button
+              </button>
+              <button
+                class="btn-save"
+                style="
+                  background: transparent;
+                  color: var(--accent);
+                  border: 1px solid rgba(245, 158, 11, 0.4);
+                  box-shadow: none;
+                  margin-bottom: 16px;
+                "
+                onclick="showAlert('Ghost button clicked!', 'warn')"
+              >
+                🚀 Ghost / Outline Button
+              </button>
+              <div class="btn-grid">
+                <button
+                  class="btn-action primary"
+                  onclick="showAlert('Action: primary', 'ok')"
+                >
+                  <span class="ba-icon">⭐</span>Primary
+                </button>
+                <button
+                  class="btn-action"
+                  onclick="showAlert('Action: default', 'ok')"
+                >
+                  <span class="ba-icon">🔧</span>Default
+                </button>
+                <button
+                  class="btn-action danger"
+                  onclick="showAlert('Action: danger!', 'er')"
+                >
+                  <span class="ba-icon">💣</span>Danger
+                </button>
+                <button
+                  class="btn-action"
+                  onclick="showAlert('Action: info', 'warn')"
+                  style="border-color: rgba(99, 102, 241, 0.4); color: #818cf8"
+                >
+                  <span class="ba-icon">ℹ️</span>Info
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- /tab-pane-wrap -->
+      </div>
+      <!-- /portal-body -->
+    </div>
+    <!-- /wrap -->
+    <script src="script.js"></script>
+    <!-- <script src="/js/utils.js"></script>
+    <script src="/js/status.js"></script>
+    <script src="/js/wifi.js"></script>
+    <script src="/js/ota.js"></script>
+    <script src="/js/main.js"></script> -->
+  </body>
+</html>
