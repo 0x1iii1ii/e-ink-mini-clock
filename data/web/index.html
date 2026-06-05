@@ -543,21 +543,22 @@
                 <span class="card-title-tag">Update</span>
               </div>
 
-              <!-- Current version + check update -->
+              <!-- Version info -->
               <div class="info-rows" style="margin-bottom: 16px">
                 <div class="info-row">
-                  <span class="info-key">Current Version</span
-                  ><span class="info-val accent" id="otaCurVer">v1.3.0</span>
+                  <span class="info-key">Current Version</span>
+                  <span class="info-val accent" id="otaCurVer">—</span>
                 </div>
                 <div class="info-row">
-                  <span class="info-key">Latest Version</span
-                  ><span class="info-val" id="otaLatestVer">—</span>
+                  <span class="info-key">Latest Version</span>
+                  <span class="info-val" id="otaLatestVer">—</span>
                 </div>
                 <div class="info-row">
-                  <span class="info-key">Status</span
-                  ><span class="info-val" id="otaCheckStatus">Not checked</span>
+                  <span class="info-key">Status</span>
+                  <span class="info-val" id="otaCheckStatus">Not checked</span>
                 </div>
               </div>
+
               <button
                 class="btn-action primary"
                 style="width: 100%; margin-bottom: 16px"
@@ -565,41 +566,48 @@
               >
                 <span class="ba-icon">🔍</span>Check for Update
               </button>
+
+              <!-- Result alert (hidden until check runs) -->
               <div
-                class="alert alert-ok ota-hidden"
+                class="alert ota-hidden"
                 id="otaUpdateAlert"
                 style="margin-bottom: 12px"
               ></div>
-              <div class="alert alert-warn" style="margin-bottom: 12px">
-                A new version is available — tap below to update automatically.
-              </div>
-              <button
-                class="btn-save"
-                style="margin-bottom: 8px"
-                onclick="startServerOTA()"
-              >
-                Download & Install from Server
-              </button>
+
+              <!-- Auto-update block (hidden until newer version found) -->
               <div
-                class="ota-bar-wrap ota-hidden"
-                id="otaServerProgress"
-                style="margin-bottom: 16px"
+                id="otaServerBlock"
+                style="display: none; margin-bottom: 16px"
               >
-                <div class="ota-bar-label">
-                  <span id="otaServerLabel">Downloading…</span
-                  ><span id="otaServerPct"></span>
+                <div class="alert alert-warn" style="margin-bottom: 12px">
+                  ⚠ A new version is available — install automatically below.
                 </div>
-                <div class="ota-track">
-                  <div class="ota-fill" id="otaServerFill"></div>
+                <button
+                  class="btn-save"
+                  style="margin-bottom: 8px"
+                  onclick="startServerOTA()"
+                >
+                  <span class="ba-icon">⬇️</span>Download &amp; Install from
+                  Server
+                </button>
+                <div class="ota-bar-wrap ota-hidden" id="otaServerProgress">
+                  <div class="ota-bar-label">
+                    <span id="otaServerLabel">Downloading…</span>
+                    <span id="otaServerPct"></span>
+                  </div>
+                  <div class="ota-track">
+                    <div class="ota-fill" id="otaServerFill"></div>
+                  </div>
                 </div>
               </div>
+
               <div class="divider">
                 <hr />
-                <span>update via URL</span>
+                <span>flash via URL</span>
                 <hr />
               </div>
 
-              <!-- HTTPS URL OTA -->
+              <!-- Manual URL OTA -->
               <div class="field">
                 <label for="otaUrl">Firmware URL (.bin)</label>
                 <input
@@ -620,46 +628,41 @@
 
               <div class="divider">
                 <hr />
-                <span>update via file</span>
+                <span>flash via file</span>
                 <hr />
               </div>
 
-              <!-- Local file OTA (existing, improved) -->
+              <!-- Drag & drop local OTA -->
               <div class="field">
                 <label>Firmware .bin file</label>
-                <div style="display: flex; gap: 8px; align-items: center">
+                <div id="otaDropZone" class="ota-drop-zone">
+                  <div class="ota-drop-icon">📦</div>
+                  <div class="ota-drop-text">
+                    Drag &amp; drop <code>.bin</code> here
+                  </div>
+                  <div class="ota-drop-sub">or click to browse</div>
                   <input
-                    type="text"
-                    id="otaFilename"
-                    placeholder="No file selected"
-                    readonly
-                    style="cursor: pointer; flex: 1"
-                    onclick="document.getElementById('firmware').click()"
+                    type="file"
+                    id="firmware"
+                    name="firmware"
+                    accept=".bin"
                   />
-                  <button
-                    class="btn-action"
-                    style="flex-shrink: 0; padding: 10px 14px"
-                    onclick="document.getElementById('firmware').click()"
-                  >
-                    Open
-                  </button>
                 </div>
-                <input
-                  type="file"
-                  id="firmware"
-                  name="firmware"
-                  accept=".bin"
-                  style="display: none"
-                />
+                <div
+                  class="info-display"
+                  id="otaFilename"
+                  style="margin-top: 8px; display: none"
+                ></div>
               </div>
+
               <div
                 class="ota-bar-wrap ota-hidden"
                 id="otaProgress"
                 style="margin-bottom: 12px"
               >
                 <div class="ota-bar-label">
-                  <span id="otaProgressLabel">Uploading…</span
-                  ><span id="otaPct">0%</span>
+                  <span id="otaProgressLabel">Uploading…</span>
+                  <span id="otaPct">0%</span>
                 </div>
                 <div class="ota-track">
                   <div class="ota-fill" id="otaFill"></div>

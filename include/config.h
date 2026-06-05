@@ -20,7 +20,7 @@
 #define DEFAULT_AP_PASS  "12345678" 
 #define GIF_FOLDER       "gif"
 #define DEFAULT_FPS      15
-#define FW_VERSION       "1.0.5"
+// #define FW_VERSION       "1.0.5"
 #define DEVICE_NAME      "ESP32-C3 E-Ink Clock"
 #define CONFIG_FILE      "/config.json"
 #define AP_SSID          "Eink-Clock-Setup"

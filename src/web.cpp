@@ -126,12 +126,18 @@ void handleCheckUpdate() {
   WiFiClientSecure client;
   client.setInsecure();
   HTTPClient https;
-  https.begin(client, "https://your-server.com/firmware/version.json");
+  https.begin(client, "https://raw.githubusercontent.com/0x1iii1ii/e-ink-mini-clock/refs/heads/main/version.json");
+  Serial.println("json version check...");
   int code = https.GET();
+  Serial.printf("HTTP Response Code: %d\n", code);
   if (code == 200) {
+    String payload = https.getString();
+    Serial.println("Received Payload:");
+    Serial.println(payload);
     server.send(200, "application/json", https.getString());
   }
   else {
+    Serial.println("Failed to fetch JSON.");
     server.send(200, "application/json", "{\"ok\":false,\"msg\":\"Could not reach update server\"}");
   }
   https.end();

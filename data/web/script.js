@@ -118,6 +118,7 @@
 
         // Device info panel
         setText('fwVerVal', d.firmware);
+        setText('otaCurVer', d.firmware);
         setText('macVal', d.mac);
         setText('ipAddrVal', d.ip);
         setText('ipAddrValSide', d.ip);
@@ -186,7 +187,6 @@
         if (ntpEl) {
           ntpEl.className = "info-val " + (d.ntpSynced ? "ok" : "er");
         }
-        setText("fwVal", d.firmware);
       })
       .catch(function () { });
   }
@@ -362,144 +362,331 @@ function doAction(action, msg) {
     });
 }
 
-// ── OTA upload ────────────────────────────────────────────
+// ── OTA drag-drop setup ───────────────────────────
+var _otaFile = null;
+var dropZone = document.getElementById('otaDropZone');
+
+if (dropZone) {
+  dropZone.addEventListener('dragover', function (e) {
+    e.preventDefault();
+    dropZone.classList.add('drag-over');
+  });
+  dropZone.addEventListener('dragleave', function () {
+    dropZone.classList.remove('drag-over');
+  });
+  dropZone.addEventListener('drop', function (e) {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    var file = e.dataTransfer.files[0];
+    if (file) setOtaFile(file);
+  });
+  document.getElementById('firmware').addEventListener('change', function () {
+    if (this.files[0]) setOtaFile(this.files[0]);
+  });
+}
+
+function setOtaFile(file) {
+  _otaFile = file;
+  var label = document.getElementById('otaFilename');
+  label.textContent = file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
+  label.style.display = 'block';
+}
+
+// ── Flash from local file ─────────────────────────
 function startOTA() {
-  var file = document.getElementById("firmware").files[0];
-  if (!file) {
-    alert("Please select a .bin file first.");
-    return;
-  }
-  if (
-    !confirm(
-      "Flash " + file.name + "?\nDevice will restart after upload.",
-    )
-  )
-    return;
+  if (!_otaFile) { showAlert('Select a .bin file first', 'er'); return; }
+  if (!confirm('Flash ' + _otaFile.name + '?\nDevice will restart after upload.')) return;
 
   var xhr = new XMLHttpRequest();
-  var prog = document.getElementById("otaProgress");
-  var fill = document.getElementById("otaFill");
-  var pct = document.getElementById("otaPct");
-  prog.classList.remove("ota-hidden");
+  var prog = document.getElementById('otaProgress');
+  var fill = document.getElementById('otaFill');
+  var pct = document.getElementById('otaPct');
+  prog.classList.remove('ota-hidden');
 
-  xhr.upload.addEventListener("progress", function (e) {
+  xhr.upload.addEventListener('progress', function (e) {
     if (e.lengthComputable) {
-      var p = Math.round((e.loaded / e.total) * 100);
-      fill.style.width = p + "%";
-      pct.textContent = p + "%";
+      var p = Math.round(e.loaded / e.total * 100);
+      fill.style.width = p + '%';
+      pct.textContent = p + '%';
     }
   });
   xhr.onload = function () {
-    pct.textContent = "100% — Restarting…";
-    fill.style.width = "100%";
+    pct.textContent = '100% — Restarting…';
+    fill.style.width = '100%';
+    showAlert('✓ Upload complete — device restarting', 'ok');
   };
   xhr.onerror = function () {
-    pct.textContent = "Upload failed";
-    fill.style.background = "var(--er-tx)";
+    pct.textContent = 'Upload failed';
+    fill.style.background = 'var(--er-tx)';
+    showAlert('✗ Upload failed', 'er');
   };
 
   var fd = new FormData();
-  fd.append("image", file); // HTTPUpdateServer expects field name "image"
-  xhr.open("POST", "/ota");
+  fd.append('image', _otaFile);
+  xhr.open('POST', '/ota');
   xhr.send(fd);
 }
 
-// ── URL OTA ───────────────────────────────────────────
+// ── Flash from URL ────────────────────────────────
 function startUrlOTA() {
-  var url = el('otaUrl').value.trim();
-  if (!url.startsWith('http')) { showAlert('Enter a valid https:// URL', 'er'); return; }
+  var url = document.getElementById('otaUrl').value.trim();
+  if (!url.startsWith('http')) { showAlert('Enter a valid http(s):// URL', 'er'); return; }
   if (!confirm('Flash firmware from:\n' + url + '\n\nDevice will restart.')) return;
-  var fd = new FormData(); fd.append('url', url);
-  showAlert('⏳ Starting URL OTA…', 'warn');
-  fetch('/ota-url', { method: 'POST', body: fd })
-    .then(function (r) { return r.json(); })
-    .then(function (d) { showAlert(d.ok ? '✓ ' + d.msg : '✗ ' + d.msg, d.ok ? 'ok' : 'er'); })
-    .catch(function () { showAlert('✗ OTA request failed', 'er'); });
-}
-
-// ── Check update ──────────────────────────────────────
-function checkOtaUpdate() {
-  setText('otaCheckStatus', 'Checking…');
-  setText('otaLatestVer', '…');
-  fetch('/check-update')
-    .then(function (r) { return r.json(); })
-    .then(function (d) {
-      if (d.version) {
-        setText('otaLatestVer', d.version);
-        var cur = el('otaCurVer').textContent.replace('v', '');
-        var same = d.version.replace('v', '') === cur;
-        setText('otaCheckStatus', same ? 'Up to date ✓' : 'Update available!');
-        var alertEl = el('otaUpdateAlert');
-        alertEl.classList.remove('ota-hidden');
-        alertEl.className = 'alert ' + (same ? 'alert-ok' : 'alert-warn');
-        alertEl.textContent = same
-          ? '✓ You are running the latest firmware.'
-          : '⚠ New version ' + d.version + ' available — enter URL below to update.';
-        if (!same && d.url) {
-          // Show the one-click update block and store the URL
-          el('otaServerBlock').style.display = 'block';
-          window._otaServerUrl = d.url;  // server must return "url" field in version.json
-          el('otaUrl').value = d.url;
-        }
-        el('otaServerBlock').style.display = 'none';
-      } else {
-        setText('otaCheckStatus', 'Failed');
-        showAlert('✗ ' + (d.msg || 'Could not check for updates'), 'er');
-      }
-    })
-    .catch(function () { setText('otaCheckStatus', 'Error'); showAlert('✗ Check failed', 'er'); });
-}
-
-function startServerOTA() {
-  if (!window._otaServerUrl) {
-    showAlert('No update URL — run Check for Update first', 'er');
-    return;
-  }
-  if (!confirm('Download and install firmware from server?\nDevice will restart after flashing.')) return;
-
-  var prog = el('otaServerProgress');
-  var fill = el('otaServerFill');
-  var label = el('otaServerLabel');
-  var pct = el('otaServerPct');
-  prog.classList.remove('ota-hidden');
-  label.textContent = 'Sending URL to device…';
-  pct.textContent = '';
-
+  showAlert('⏳ Sending URL to device…', 'warn');
   var fd = new FormData();
-  fd.append('url', window._otaServerUrl);
-
+  fd.append('url', url);
   fetch('/ota-url', { method: 'POST', body: fd })
     .then(function (r) { return r.json(); })
     .then(function (d) {
       if (d.ok) {
-        label.textContent = 'Flashing… device will restart';
+        showAlert('⏳ Flashing… polling for reboot', 'warn');
+        pollForReboot();
+      } else {
+        showAlert('✗ ' + (d.msg || 'Failed'), 'er');
+      }
+    })
+    .catch(function () { showAlert('✗ Could not reach device', 'er'); });
+}
+
+// ── Check for update ──────────────────────────────
+function checkOtaUpdate() {
+  var statusEl = document.getElementById('otaCheckStatus');
+  var latestEl = document.getElementById('otaLatestVer');
+  var alertEl = document.getElementById('otaUpdateAlert');
+  var serverBlk = document.getElementById('otaServerBlock');
+
+  statusEl.textContent = 'Checking…';
+  latestEl.textContent = '…';
+  alertEl.className = 'alert ota-hidden';
+  serverBlk.style.display = 'none';
+
+  fetch('/check-update')
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (!d.version) {
+        statusEl.textContent = 'Failed';
+        showAlert('✗ ' + (d.msg || 'Could not reach update server'), 'er');
+        return;
+      }
+      latestEl.textContent = d.version;
+      var cur = (document.getElementById('otaCurVer').textContent || '').trim();
+      var latest = d.version.replace('v', '').trim();
+      var upToDate = cur === latest;
+
+      statusEl.textContent = upToDate ? 'Up to date ✓' : 'Update available!';
+      alertEl.className = 'alert ' + (upToDate ? 'alert-ok' : 'alert-warn');
+      alertEl.textContent = upToDate
+        ? '✓ You are running the latest firmware.'
+        : '⚠ Version ' + d.version + ' is available.';
+
+      if (!upToDate && d.url) {
+        window._otaServerUrl = d.url;
+        document.getElementById('otaUrl').value = d.url;   // pre-fill URL field too
+        serverBlk.style.display = 'block';
+      }
+    })
+    .catch(function () {
+      statusEl.textContent = 'Error';
+      showAlert('✗ Check failed', 'er');
+    });
+}
+
+// ── Auto-install from server ──────────────────────
+function startServerOTA() {
+  if (!window._otaServerUrl) {
+    showAlert('Run "Check for Update" first', 'er'); return;
+  }
+  if (!confirm('Download and install from server?\nDevice will restart after flashing.')) return;
+
+  var prog = document.getElementById('otaServerProgress');
+  var fill = document.getElementById('otaServerFill');
+  var label = document.getElementById('otaServerLabel');
+  var pct = document.getElementById('otaServerPct');
+  prog.classList.remove('ota-hidden');
+  label.textContent = 'Sending to device…';
+
+  var fd = new FormData();
+  fd.append('url', window._otaServerUrl);
+  fetch('/ota-url', { method: 'POST', body: fd })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (d.ok) {
         fill.style.width = '100%';
         pct.textContent = '✓';
-        showAlert('✓ OTA started — reconnect in ~30 s', 'ok');
-        // Poll /status every 3 s — when it responds again the device is back
-        var pollBack = setInterval(function () {
-          fetch('/status').then(function (r) {
-            if (r.ok) {
-              clearInterval(pollBack);
-              label.textContent = 'Done — device is back online!';
-              showAlert('✓ Update complete!', 'ok');
-            }
-          }).catch(function () {
-            label.textContent = 'Rebooting…';
-          });
-        }, 3000);
+        label.textContent = 'Flashing — polling for reboot…';
+        pollForReboot(label);
       } else {
-        label.textContent = 'Failed: ' + (d.msg || 'unknown error');
+        label.textContent = 'Failed: ' + (d.msg || 'unknown');
         fill.style.background = 'var(--er-tx)';
         showAlert('✗ ' + (d.msg || 'OTA failed'), 'er');
       }
     })
     .catch(function () {
       label.textContent = 'Request failed';
-      fill.style.background = 'var(--er-tx)';
       showAlert('✗ Could not reach device', 'er');
     });
 }
+
+// ── Poll until device comes back after reboot ─────
+function pollForReboot(labelEl) {
+  var attempts = 0;
+  var timer = setInterval(function () {
+    attempts++;
+    if (attempts > 40) {           // ~2 min timeout
+      clearInterval(timer);
+      showAlert('⚠ Device not responding — check manually', 'warn');
+      return;
+    }
+    fetch('/status').then(function (r) {
+      if (r.ok) {
+        clearInterval(timer);
+        if (labelEl) labelEl.textContent = 'Done — device is back online!';
+        showAlert('✓ Update complete! Device is back online.', 'ok');
+      }
+    }).catch(function () {
+      if (labelEl) labelEl.textContent = 'Rebooting… (' + attempts + ')';
+    });
+  }, 3000);
+}
+
+// // ── OTA upload ────────────────────────────────────────────
+// function startOTA() {
+//   var file = document.getElementById("firmware").files[0];
+//   if (!file) {
+//     alert("Please select a .bin file first.");
+//     return;
+//   }
+//   if (
+//     !confirm(
+//       "Flash " + file.name + "?\nDevice will restart after upload.",
+//     )
+//   )
+//     return;
+
+//   var xhr = new XMLHttpRequest();
+//   var prog = document.getElementById("otaProgress");
+//   var fill = document.getElementById("otaFill");
+//   var pct = document.getElementById("otaPct");
+//   prog.classList.remove("ota-hidden");
+
+//   xhr.upload.addEventListener("progress", function (e) {
+//     if (e.lengthComputable) {
+//       var p = Math.round((e.loaded / e.total) * 100);
+//       fill.style.width = p + "%";
+//       pct.textContent = p + "%";
+//     }
+//   });
+//   xhr.onload = function () {
+//     pct.textContent = "100% — Restarting…";
+//     fill.style.width = "100%";
+//   };
+//   xhr.onerror = function () {
+//     pct.textContent = "Upload failed";
+//     fill.style.background = "var(--er-tx)";
+//   };
+
+//   var fd = new FormData();
+//   fd.append("image", file); // HTTPUpdateServer expects field name "image"
+//   xhr.open("POST", "/ota");
+//   xhr.send(fd);
+// }
+
+// // ── URL OTA ───────────────────────────────────────────
+// function startUrlOTA() {
+//   var url = el('otaUrl').value.trim();
+//   if (!url.startsWith('http')) { showAlert('Enter a valid https:// URL', 'er'); return; }
+//   if (!confirm('Flash firmware from:\n' + url + '\n\nDevice will restart.')) return;
+//   var fd = new FormData(); fd.append('url', url);
+//   showAlert('⏳ Starting URL OTA…', 'warn');
+//   fetch('/ota-url', { method: 'POST', body: fd })
+//     .then(function (r) { return r.json(); })
+//     .then(function (d) { showAlert(d.ok ? '✓ ' + d.msg : '✗ ' + d.msg, d.ok ? 'ok' : 'er'); })
+//     .catch(function () { showAlert('✗ OTA request failed', 'er'); });
+// }
+
+// // ── Check update ──────────────────────────────────────
+// function checkOtaUpdate() {
+//   setText('otaCheckStatus', 'Checking…');
+//   setText('otaLatestVer', '…');
+//   fetch('/check-update')
+//     .then(function (r) { return r.json(); })
+//     .then(function (d) {
+//       if (d.version) {
+//         setText('otaLatestVer', d.version);
+//         var cur = el('otaCurVer').textContent.replace('v', '');
+//         var same = d.version.replace('v', '') === cur;
+//         setText('otaCheckStatus', same ? 'Up to date ✓' : 'Update available!');
+//         var alertEl = el('otaUpdateAlert');
+//         alertEl.classList.remove('ota-hidden');
+//         alertEl.className = 'alert ' + (same ? 'alert-ok' : 'alert-warn');
+//         alertEl.textContent = same
+//           ? '✓ You are running the latest firmware.'
+//           : '⚠ New version ' + d.version + ' available — enter URL below to update.';
+//         if (!same && d.url) {
+//           // Show the one-click update block and store the URL
+//           el('otaServerBlock').style.display = 'block';
+//           window._otaServerUrl = d.url;  // server must return "url" field in version.json
+//           el('otaUrl').value = d.url;
+//         }
+//         el('otaServerBlock').style.display = 'none';
+//       } else {
+//         setText('otaCheckStatus', 'Failed');
+//         showAlert('✗ ' + (d.msg || 'Could not check for updates'), 'er');
+//       }
+//     })
+//     .catch(function () { setText('otaCheckStatus', 'Error'); showAlert('✗ Check failed', 'er'); });
+// }
+
+// function startServerOTA() {
+//   if (!window._otaServerUrl) {
+//     showAlert('No update URL — run Check for Update first', 'er');
+//     return;
+//   }
+//   if (!confirm('Download and install firmware from server?\nDevice will restart after flashing.')) return;
+
+//   var prog = el('otaServerProgress');
+//   var fill = el('otaServerFill');
+//   var label = el('otaServerLabel');
+//   var pct = el('otaServerPct');
+//   prog.classList.remove('ota-hidden');
+//   label.textContent = 'Sending URL to device…';
+//   pct.textContent = '';
+
+//   var fd = new FormData();
+//   fd.append('url', window._otaServerUrl);
+
+//   fetch('/ota-url', { method: 'POST', body: fd })
+//     .then(function (r) { return r.json(); })
+//     .then(function (d) {
+//       if (d.ok) {
+//         label.textContent = 'Flashing… device will restart';
+//         fill.style.width = '100%';
+//         pct.textContent = '✓';
+//         showAlert('✓ OTA started — reconnect in ~30 s', 'ok');
+//         // Poll /status every 3 s — when it responds again the device is back
+//         var pollBack = setInterval(function () {
+//           fetch('/status').then(function (r) {
+//             if (r.ok) {
+//               clearInterval(pollBack);
+//               label.textContent = 'Done — device is back online!';
+//               showAlert('✓ Update complete!', 'ok');
+//             }
+//           }).catch(function () {
+//             label.textContent = 'Rebooting…';
+//           });
+//         }, 3000);
+//       } else {
+//         label.textContent = 'Failed: ' + (d.msg || 'unknown error');
+//         fill.style.background = 'var(--er-tx)';
+//         showAlert('✗ ' + (d.msg || 'OTA failed'), 'er');
+//       }
+//     })
+//     .catch(function () {
+//       label.textContent = 'Request failed';
+//       fill.style.background = 'var(--er-tx)';
+//       showAlert('✗ Could not reach device', 'er');
+//     });
+// }
 
 // ── Battery graph ─────────────────────────────────────
 var _batHistory = [];   // { t: timestamp, v: pct }
