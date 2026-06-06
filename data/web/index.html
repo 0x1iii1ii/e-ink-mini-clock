@@ -459,11 +459,22 @@
                   type="text"
                   id="hostnameVal"
                   name="hostnameVal"
-                  value="esp-eink-clock"
-                  placeholder="esp-eink-clock"
+                  value="eink-clock"
+                  placeholder="eink-clock"
+                  maxlength="12"
                   autocomplete="off"
                   spellcheck="false"
                 />
+                <div
+                  style="
+                    font-size: 11px;
+                    color: var(--muted);
+                    text-align: left;
+                    margin-top: 4px;
+                  "
+                >
+                  <span id="hostnameCount">0</span>/12
+                </div>
               </div>
               <button
                 type="button"

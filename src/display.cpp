@@ -102,125 +102,135 @@ void drawWifiBars(int x, int y, int rssi) {
 //  Main draw
 // ════════════════════════════════════════════════════════════
 void drawDisplay() {
-
   struct tm t;
   if (!getRtcTime(&t)) {
-    Serial.println("RTC read failed");
+    Serial.println("[Display] RTC read failed");
     return;
   }
 
+  // ── Time processing ──────────────────────────────────
   int hr = t.tm_hour;
   int min = t.tm_min;
   bool pm = (hr >= 12);
-
   if (cfg.clockCfg.hour12) {
-    if (hr > 12) hr -= 12;
+    hr = hr % 12;
     if (hr == 0) hr = 12;
   }
 
-  String dateStr = String(days[t.tm_wday]) + " " + zp(t.tm_mday) + "-" + months[t.tm_mon] + "-" + String(1900 + t.tm_year);
-
-  Serial.println("dateStr: " + dateStr);
+  String dateStr = String(days[t.tm_wday]) + " " +
+    zp(t.tm_mday) + "-" +
+    months[t.tm_mon] + "-" +
+    String(1900 + t.tm_year);
 
   gfx.fillScreen(EPD_WHITE);
 
-  // ── TOP BAR ────────────────────────────────────────────
-  gfx.setTextSize(2);
+  // ── Constants ────────────────────────────────────────
+  const int SCREEN_W2 = 360;
+  const int TOP_Y = 3;
+  const int BOTTOM_Y = 175;
+  const int ITEM_SPACING = 8;
+  const int TEXT_SIZE = 2;
+
+  // Approximate pixel widths at textSize 2 (6px per char * 2 = 12px/char)
+  const int BATT_ICON_W = 30;   // battery icon
+  const int BATT_PCT_W = 36;   // "100%"
+  const int WIFI_W = 26;   // wifi bars graphic
+  const int HUM_W = 48;   // "100%H"
+  const int TEMP_W = 36;   // "100C"
+  const int AMPM_W = 24;   // "AM" / "PM"
+
+  // ── TOP BAR ──────────────────────────────────────────
+  gfx.setTextSize(TEXT_SIZE);
   gfx.setTextColor(EPD_BLACK);
-  gfx.setCursor(4, 3);
+  gfx.setCursor(4, TOP_Y);
   gfx.print(dateStr);
 
-  // battery icon always there
-  drawBattery(330, 2, g_batteryPct, g_isVbusConnected);
+  // Right-to-left layout: battery icon → batt% → wifi → hum → temp
+  int rightX = SCREEN_W2 - BATT_ICON_W - 2;
+  drawBattery(rightX, TOP_Y - 1, g_batteryPct, g_isVbusConnected);
+  rightX -= ITEM_SPACING;
 
-  // Auto right-align items based on enabled settings
-  // Order: temp -> hum -> wifi bar -> battery percentage
-  // Item approximate widths (in pixels at textSize 2)
-  int ITEM_SPACING = 10;
-  int WIFI_WIDTH = 26;
-  int BATT_WIDTH = 35;
-  int TEMP_WIDTH = 35;  // e.g., "25C"
-  int HUM_WIDTH = 48;   // e.g., "65%H"
-
-  int rightX = 330 - 3;  // Start from right edge
-
-  // Draw items in reverse order (battery, wifi, humidity, temperature)
-  // so we can calculate positions from right to left
-
-  // // Battery percentage (rightmost)
-  // if (cfg.clockCfg.showBattPct) {
-  //   rightX -= BATT_WIDTH;
-  //   gfx.setTextColor(EPD_BLACK);
-  //   gfx.setTextSize(2);
-  //   gfx.setCursor(rightX, 3);
-  //   gfx.print(String(g_batteryPct).c_str());
-  //   gfx.print("%");
-  //   rightX -= ITEM_SPACING;
-  // }
-
-  // WiFi signal bars
-  if (cfg.clockCfg.showRssi) {
-    rightX -= WIFI_WIDTH;
-    drawWifiBars(rightX, -2, WiFi.RSSI());
+  if (cfg.clockCfg.showBattPct) {
+    rightX -= BATT_PCT_W;
+    gfx.setTextColor(EPD_BLACK);
+    gfx.setTextSize(TEXT_SIZE);
+    gfx.setCursor(rightX, TOP_Y);
+    gfx.print(g_batteryPct);
+    gfx.print("%");
     rightX -= ITEM_SPACING;
   }
 
-  // Humidity from AHT20
+  if (cfg.clockCfg.showRssi) {
+    rightX -= WIFI_W;
+    drawWifiBars(rightX, TOP_Y - 5, WiFi.RSSI());
+    rightX -= ITEM_SPACING;
+  }
+
   if (cfg.clockCfg.showHum) {
-    rightX -= HUM_WIDTH;
+    rightX -= HUM_W;
     gfx.setTextColor(EPD_BLACK);
-    gfx.setTextSize(2);
-    gfx.setCursor(rightX, 3);
-    gfx.print(String(g_humidity, 0).c_str());
+    gfx.setTextSize(TEXT_SIZE);
+    gfx.setCursor(rightX, TOP_Y);
+    gfx.print(String(g_humidity, 0));
     gfx.print("%H");
     rightX -= ITEM_SPACING;
   }
 
-  // Temperature from AHT20
   if (cfg.clockCfg.showTemp) {
-    rightX -= TEMP_WIDTH;
+    rightX -= TEMP_W;
     gfx.setTextColor(EPD_RED);
-    gfx.setTextSize(2);
-    gfx.setCursor(rightX, 3);
-    gfx.print(String(g_temperature, 0).c_str());
+    gfx.setTextSize(TEXT_SIZE);
+    gfx.setCursor(rightX, TOP_Y);
+    gfx.print(String(g_temperature, 0));
     gfx.print("C");
   }
 
-  // AM/PM top-right corner of clock area (yellow)
-  // if (cfg.hour12) {
+  // ── DIVIDERS ─────────────────────────────────────────
+  gfx.drawHLine(0, LINE_TOP_BAR, SCREEN_W2, EPD_BLACK);
+  gfx.drawHLine(0, LINE_BOTTOM_BAR, SCREEN_W2, EPD_BLACK);
+
+  // ── BIG CLOCK ────────────────────────────────────────
+  bigFont.drawTime(hr, min, EPD_BLACK);
+
+  // // AM/PM — top-right of clock area, above bottom bar
+  // if (cfg.clockCfg.hour12) {
   //   gfx.setTextColor(EPD_BLACK);
-  //   gfx.setTextSize(2);
-  //   gfx.setCursor(260, 3);
+  //   gfx.setTextSize(TEXT_SIZE);
+  //   gfx.setCursor(SCREEN_W2 - AMPM_W - 4, LINE_TOP_BAR + 4);
   //   gfx.print(pm ? "PM" : "AM");
   // }
 
-  // Double divider
-  gfx.drawHLine(0, LINE_TOP_BAR, 360, EPD_BLACK);
+  // ── BOTTOM BAR ───────────────────────────────────────
+  const String ipStr = "IP:" + WiFi.localIP().toString();
+  const String utcStr = String("UTC") +
+    (cfg.clockCfg.utcOffset >= 0 ? "+" : "") +
+    String((int) cfg.clockCfg.utcOffset);
+  const String refreshStr = String(cfg.clockCfg.refreshMin) + "min";
+  String host = String(cfg.hostname);
+  if (host.length() > 12) host = host.substring(0, 11) + "~";
 
-  // ── BIG CLOCK ──────────────────────────────────────────
-  bigFont.drawTime(hr, min, EPD_BLACK);
-  gfx.drawHLine(0, LINE_BOTTOM_BAR, 360, EPD_BLACK);
+  // Build one right-side string
+  const String rightStr = host + ".local | " + String(FW_VERSION) +
+    " | " + utcStr +
+    " | " + refreshStr;
 
-  // ── BOTTOM BAR ─────────────────────────────────────────
+  int rightW = rightStr.length() * 6;
+
+  gfx.setTextSize(1);
+
+  // Left: IP
   gfx.setTextColor(EPD_RED);
-  gfx.setTextSize(1);
-  const String ip = "IP:" + WiFi.localIP().toString();
-  gfx.setCursor(4, 175);
-  gfx.print(ip.c_str());
+  gfx.setCursor(2, BOTTOM_Y);
+  gfx.print(ipStr);
 
+  // Right: hostname + version + utc + refresh
   gfx.setTextColor(EPD_BLACK);
-  gfx.setTextSize(1);
-  gfx.setCursor(135, 175);
-  gfx.print("UTC");
-  if (cfg.clockCfg.utcOffset >= 0) gfx.print("+");
-  gfx.print((int) cfg.clockCfg.utcOffset);
-  gfx.print(" | ~");
-  gfx.print(cfg.clockCfg.refreshMin);
-  gfx.print("min | web: ");
-  gfx.print(cfg.hostname);
-  gfx.print(".local");
+  gfx.setCursor(SCREEN_W2 - rightW - 4, BOTTOM_Y);
+  gfx.print(rightStr);
 
-  Serial.println("Display updated.");
+  Serial.println("[Display] Updated — " + dateStr +
+    " " + zp(hr) + ":" + zp(min) +
+    (cfg.clockCfg.hour12 ? (pm ? " PM" : " AM") : ""));
   gfx.display();
 }
 

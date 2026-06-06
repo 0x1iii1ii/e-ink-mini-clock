@@ -48,7 +48,7 @@ struct clock_settings_t {
 struct config_t {
     wifi_t              wifi[2];        // support 2 WiFi networks for backup
     clock_settings_t    clockCfg;  // clock and display settings
-    char                hostname[32] = "eink-clock"; // mDNS hostname
+    char                hostname[12] = "eink-clock"; // mDNS hostname
 };
 
 extern String g_logBuf;

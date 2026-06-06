@@ -341,6 +341,17 @@ if (hostnameBtn) {
   });
 }
 
+var hnInput = document.getElementById('hostnameVal');
+var hnCount = document.getElementById('hostnameCount');
+if (hnInput && hnCount) {
+  function updateHnCount() {
+    hnCount.textContent = hnInput.value.length;
+    hnCount.style.color = hnInput.value.length >= 12 ? 'var(--er-tx)' : 'var(--muted)';
+  }
+  hnInput.addEventListener('input', updateHnCount);
+  updateHnCount();  // init on load
+}
+
 // ── POST /action ──────────────────────────────────────────
 function doAction(action, msg) {
   if (!confirm(msg)) return;
