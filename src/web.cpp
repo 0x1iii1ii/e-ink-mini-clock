@@ -110,6 +110,10 @@ void handleOtaUrl() {
   // Use HTTPUpdate
   WiFiClientSecure client;
   client.setInsecure();   // or set a CA cert for production
+
+  // Follow redirects manually
+  httpUpdate.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+
   t_httpUpdate_return ret = httpUpdate.update(client, url);
   switch (ret) {
   case HTTP_UPDATE_OK:     ESP.restart(); break;
@@ -120,27 +124,45 @@ void handleOtaUrl() {
   }
 }
 
-void handleCheckUpdate() {
-  addCORSHeaders();
-  // Hit your own version endpoint — replace with your actual URL
+static String   _updatePayload = "";
+static bool     _updateChecking = false;
+static bool     _updateReady = false;
+
+void doVersionFetch() {
+  if (!_updateChecking) return;
   WiFiClientSecure client;
   client.setInsecure();
   HTTPClient https;
+  https.setTimeout(8000);
   https.begin(client, "https://raw.githubusercontent.com/0x1iii1ii/e-ink-mini-clock/refs/heads/main/version.json");
-  Serial.println("json version check...");
   int code = https.GET();
-  Serial.printf("HTTP Response Code: %d\n", code);
   if (code == 200) {
-    String payload = https.getString();
-    Serial.println("Received Payload:");
-    Serial.println(payload);
-    server.send(200, "application/json", https.getString());
+    _updatePayload = https.getString();
+    Serial.println("Fetched version info: " + _updatePayload);
   }
   else {
-    Serial.println("Failed to fetch JSON.");
-    server.send(200, "application/json", "{\"ok\":false,\"msg\":\"Could not reach update server\"}");
+    _updatePayload = "{\"ok\":false,\"msg\":\"Fetch failed\"}";
   }
   https.end();
+  _updateChecking = false;
+  _updateReady = true;
+}
+
+void handleCheckUpdate() {
+  addCORSHeaders();
+  if (_updateChecking) {
+    server.send(200, "application/json", "{\"ok\":false,\"msg\":\"Already checking\"}");
+    return;
+  }
+  if (_updateReady) {
+    // Return cached result immediately
+    _updateReady = false;
+    server.send(200, "application/json", _updatePayload);
+    return;
+  }
+  // Kick off in background via a flag — handled in loop()
+  _updateChecking = true;
+  server.send(200, "application/json", "{\"ok\":false,\"msg\":\"checking\",\"pending\":true}");
 }
 
 // ── GET /status ────────────────────────────────────────────
@@ -381,6 +403,7 @@ void web_init() {
 
 void web_loop() {
   server.handleClient();
+  doVersionFetch();
 }
 
 // ── AP / captive portal (setup mode) ──────────────────────

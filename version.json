@@ -1,5 +1,4 @@
 {
-  "version": "v1.0.1",
-  "url": "https://github.com/0x1iii1ii/e-ink-mini-clock/releases/download/1.0.1/eink_esp32c3_4mb_fw_v1.0.1.bin",
-  "notes": "Fixed NTP retry logic"
+  "version": "1.0.2",
+  "url": "https://github.com/0x1iii1ii/e-ink-mini-clock/releases/download/1.0.2/eink_esp32c3_4mb_fw_v1.0.2.bin"
 }

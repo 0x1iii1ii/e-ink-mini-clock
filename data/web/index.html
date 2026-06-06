@@ -93,9 +93,9 @@
           <span class="mstat-val" id="rssiValM">-- dBm</span>
         </div>
       </div>
+
       <!-- Body: sidebar + panels -->
       <div class="portal-body">
-        <!-- Sidebar -->
         <nav class="sidebar">
           <button class="tab-btn active" data-tab="clock">
             <span class="tb-icon">🕒</span>Clock
@@ -115,14 +115,11 @@
           <button class="tab-btn" data-tab="deviceinfo">
             <span class="tb-icon">ℹ️</span>Info
           </button>
-          <button class="tab-btn" data-tab="demo">
-            <span class="tb-icon">🧪</span>UI Demo
-          </button>
-          <div class="sidebar-foot">
+          <!-- <div class="sidebar-foot">
             <span class="portal-ip-side" id="ipAddrValSide">-</span>
             <br />
             <span class="portal-ip-side" id="hostNameSide">-</span>
-          </div>
+          </div> -->
         </nav>
 
         <!-- Tab panels -->
@@ -349,7 +346,7 @@
             </div>
           </div>
 
-          <!-- ② WiFi -->
+          <!-- WiFi -->
           <div class="tab-panel" id="panel-wifi">
             <div class="card">
               <div class="card-title">
@@ -442,7 +439,7 @@
             </div>
           </div>
 
-          <!-- ③ Device -->
+          <!-- Device -->
           <div class="tab-panel" id="panel-device">
             <div class="card">
               <div class="card-title">
@@ -473,14 +470,14 @@
                 class="btn-save"
                 id="hostnameBtn"
                 style="margin-bottom: 16px"
-                onclick="alert('Hostname saved (demo)')"
+                onclick="alert('Hostname saved!')"
               >
                 Save Hostname
               </button>
             </div>
           </div>
 
-          <!-- ④ Actions -->
+          <!-- Actions -->
           <div class="tab-panel" id="panel-actions">
             <div class="card">
               <div class="card-title">
@@ -564,7 +561,7 @@
                 style="width: 100%; margin-bottom: 16px"
                 onclick="checkOtaUpdate()"
               >
-                <span class="ba-icon">🔍</span>Check for Update
+                Check Update from GitHub
               </button>
 
               <!-- Result alert (hidden until check runs) -->
@@ -579,16 +576,15 @@
                 id="otaServerBlock"
                 style="display: none; margin-bottom: 16px"
               >
-                <div class="alert alert-warn" style="margin-bottom: 12px">
-                  ⚠ A new version is available — install automatically below.
-                </div>
+                <!-- <div class="alert alert-warn" style="margin-bottom: 12px">
+                  ⚠ A new version is available — click below to install.
+                </div> -->
                 <button
                   class="btn-save"
                   style="margin-bottom: 8px"
                   onclick="startServerOTA()"
                 >
-                  <span class="ba-icon">⬇️</span>Download &amp; Install from
-                  Server
+                  Download &amp; Install from Server
                 </button>
                 <div class="ota-bar-wrap ota-hidden" id="otaServerProgress">
                   <div class="ota-bar-label">
@@ -603,7 +599,7 @@
 
               <div class="divider">
                 <hr />
-                <span>flash via URL</span>
+                <span>Update via URL</span>
                 <hr />
               </div>
 
@@ -623,12 +619,12 @@
                 style="margin-bottom: 16px"
                 onclick="startUrlOTA()"
               >
-                Flash from URL
+                Update from URL
               </button>
 
               <div class="divider">
                 <hr />
-                <span>flash via file</span>
+                <span>Update via file</span>
                 <hr />
               </div>
 
@@ -636,7 +632,6 @@
               <div class="field">
                 <label>Firmware .bin file</label>
                 <div id="otaDropZone" class="ota-drop-zone">
-                  <div class="ota-drop-icon">📦</div>
                   <div class="ota-drop-text">
                     Drag &amp; drop <code>.bin</code> here
                   </div>
@@ -669,7 +664,7 @@
                 </div>
               </div>
               <button class="btn-save" onclick="startOTA()">
-                Flash from File
+                Update from File
               </button>
             </div>
           </div>
@@ -756,307 +751,9 @@
               </div>
             </div>
           </div>
-
-          <!-- ⑤ UI Demo -->
-          <div class="tab-panel" id="panel-demo">
-            <div class="card">
-              <div class="card-title">
-                <span class="card-title-icon">🧪</span>
-                <h2>UI Component Demo</h2>
-                <span class="card-title-tag">Reference</span>
-              </div>
-
-              <!-- Alerts -->
-              <div class="slabel" style="margin-bottom: 8px">Alerts</div>
-              <div class="alert alert-ok" style="margin-bottom: 8px">
-                ✓ Success — settings saved successfully.
-              </div>
-              <div class="alert alert-warn" style="margin-bottom: 8px">
-                ⚠ Warning — battery below 20%.
-              </div>
-              <div class="alert alert-er" style="margin-bottom: 16px">
-                ✗ Error — NTP sync failed.
-              </div>
-
-              <!-- Text inputs -->
-              <div class="slabel" style="margin-bottom: 8px">Text Inputs</div>
-              <div class="field">
-                <label>Plain text</label>
-                <input type="text" placeholder="Enter some text…" />
-              </div>
-              <div class="field">
-                <label>Password</label>
-                <div class="pw-wrap">
-                  <input
-                    type="password"
-                    id="demoPass"
-                    placeholder="Enter password…"
-                  />
-                  <button
-                    type="button"
-                    class="eye-btn"
-                    onclick="
-                      var i = document.getElementById('demoPass');
-                      i.type = i.type === 'password' ? 'text' : 'password';
-                      this.textContent = i.type === 'password' ? '●' : '○';
-                    "
-                  >
-                    ●
-                  </button>
-                </div>
-              </div>
-              <div class="field">
-                <label>Number</label>
-                <input type="number" value="42" min="0" max="100" />
-              </div>
-
-              <!-- Dropdown -->
-              <div class="slabel" style="margin-bottom: 8px">Dropdown</div>
-              <div class="field">
-                <label>Select option</label>
-                <select
-                  id="demoSelect"
-                  onchange="
-                    document.getElementById('demoSelectVal').textContent =
-                      this.value
-                  "
-                >
-                  <option value="">— choose —</option>
-                  <option value="epaper">E-Paper 2.66&quot;</option>
-                  <option value="oled">OLED 0.96&quot;</option>
-                  <option value="tft">TFT 1.8&quot;</option>
-                  <option value="lcd">LCD 16x2</option>
-                </select>
-              </div>
-              <div class="info-row" style="margin-bottom: 16px">
-                <span class="info-key">Selected value</span>
-                <span class="info-val accent" id="demoSelectVal">—</span>
-              </div>
-
-              <!-- Range sliders -->
-              <div class="slabel" style="margin-bottom: 8px">Range Sliders</div>
-              <div class="field">
-                <label>Brightness — <span id="brightnessVal">70</span>%</label>
-                <input
-                  type="range"
-                  id="brightnessSlider"
-                  min="0"
-                  max="100"
-                  value="70"
-                  style="
-                    width: 100%;
-                    accent-color: var(--accent);
-                    cursor: pointer;
-                  "
-                  oninput="
-                    document.getElementById('brightnessVal').textContent =
-                      this.value
-                  "
-                />
-              </div>
-              <div class="field">
-                <label>Contrast — <span id="contrastVal">50</span>%</label>
-                <input
-                  type="range"
-                  id="contrastSlider"
-                  min="0"
-                  max="100"
-                  value="50"
-                  style="
-                    width: 100%;
-                    accent-color: var(--accent);
-                    cursor: pointer;
-                  "
-                  oninput="
-                    document.getElementById('contrastVal').textContent =
-                      this.value
-                  "
-                />
-              </div>
-
-              <!-- Toggles -->
-              <div class="slabel" style="margin-bottom: 8px">
-                Toggle Switches
-              </div>
-              <div class="toggle-field">
-                <div>
-                  <div class="toggle-label">Feature Alpha</div>
-                  <div class="toggle-sub">Enable experimental mode</div>
-                </div>
-                <label class="switch"
-                  ><input type="checkbox" checked /><span class="slider"></span
-                ></label>
-              </div>
-              <div class="toggle-field" style="margin-bottom: 16px">
-                <div>
-                  <div class="toggle-label">Feature Beta</div>
-                  <div class="toggle-sub">Off by default</div>
-                </div>
-                <label class="switch"
-                  ><input type="checkbox" /><span class="slider"></span
-                ></label>
-              </div>
-
-              <!-- Radio buttons -->
-              <div class="slabel" style="margin-bottom: 8px">Radio Group</div>
-              <div
-                style="
-                  display: flex;
-                  flex-direction: column;
-                  gap: 6px;
-                  margin-bottom: 16px;
-                "
-                id="demoRadio"
-              >
-                <label
-                  class="toggle-field"
-                  style="cursor: pointer; margin-bottom: 0"
-                >
-                  <div>
-                    <div class="toggle-label">Option A — NTP only</div>
-                    <div class="toggle-sub">Sync from internet</div>
-                  </div>
-                  <input
-                    type="radio"
-                    name="timeSource"
-                    value="ntp"
-                    checked
-                    style="
-                      width: 18px;
-                      height: 18px;
-                      accent-color: var(--accent);
-                      flex-shrink: 0;
-                      cursor: pointer;
-                    "
-                  />
-                </label>
-                <label
-                  class="toggle-field"
-                  style="cursor: pointer; margin-bottom: 0"
-                >
-                  <div>
-                    <div class="toggle-label">Option B — RTC only</div>
-                    <div class="toggle-sub">Use hardware clock</div>
-                  </div>
-                  <input
-                    type="radio"
-                    name="timeSource"
-                    value="rtc"
-                    style="
-                      width: 18px;
-                      height: 18px;
-                      accent-color: var(--accent);
-                      flex-shrink: 0;
-                      cursor: pointer;
-                    "
-                  />
-                </label>
-                <label
-                  class="toggle-field"
-                  style="cursor: pointer; margin-bottom: 0"
-                >
-                  <div>
-                    <div class="toggle-label">Option C — NTP + RTC</div>
-                    <div class="toggle-sub">Sync NTP, fallback to RTC</div>
-                  </div>
-                  <input
-                    type="radio"
-                    name="timeSource"
-                    value="both"
-                    style="
-                      width: 18px;
-                      height: 18px;
-                      accent-color: var(--accent);
-                      flex-shrink: 0;
-                      cursor: pointer;
-                    "
-                  />
-                </label>
-              </div>
-
-              <!-- Info rows -->
-              <div class="slabel" style="margin-bottom: 8px">Info Rows</div>
-              <div class="info-rows" style="margin-bottom: 16px">
-                <div class="info-row">
-                  <span class="info-key">String value</span
-                  ><span class="info-val">esp-eink-clock</span>
-                </div>
-                <div class="info-row">
-                  <span class="info-key">Good status</span
-                  ><span class="info-val ok">Online</span>
-                </div>
-                <div class="info-row">
-                  <span class="info-key">Bad status</span
-                  ><span class="info-val er">Offline</span>
-                </div>
-                <div class="info-row">
-                  <span class="info-key">Accent value</span
-                  ><span class="info-val accent">v1.3.0</span>
-                </div>
-              </div>
-
-              <!-- Button variants -->
-              <div class="slabel" style="margin-bottom: 8px">Buttons</div>
-              <button
-                class="btn-save"
-                style="margin-bottom: 8px"
-                onclick="showAlert('Primary button clicked!', 'ok')"
-              >
-                💾 Primary Button
-              </button>
-              <button
-                class="btn-save"
-                style="
-                  background: transparent;
-                  color: var(--accent);
-                  border: 1px solid rgba(245, 158, 11, 0.4);
-                  box-shadow: none;
-                  margin-bottom: 16px;
-                "
-                onclick="showAlert('Ghost button clicked!', 'warn')"
-              >
-                🚀 Ghost / Outline Button
-              </button>
-              <div class="btn-grid">
-                <button
-                  class="btn-action primary"
-                  onclick="showAlert('Action: primary', 'ok')"
-                >
-                  <span class="ba-icon">⭐</span>Primary
-                </button>
-                <button
-                  class="btn-action"
-                  onclick="showAlert('Action: default', 'ok')"
-                >
-                  <span class="ba-icon">🔧</span>Default
-                </button>
-                <button
-                  class="btn-action danger"
-                  onclick="showAlert('Action: danger!', 'er')"
-                >
-                  <span class="ba-icon">💣</span>Danger
-                </button>
-                <button
-                  class="btn-action"
-                  onclick="showAlert('Action: info', 'warn')"
-                  style="border-color: rgba(99, 102, 241, 0.4); color: #818cf8"
-                >
-                  <span class="ba-icon">ℹ️</span>Info
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
-        <!-- /tab-pane-wrap -->
       </div>
-      <!-- /portal-body -->
     </div>
-    <!-- /wrap -->
     <script src="script.js"></script>
-    <!-- <script src="/js/utils.js"></script>
-    <script src="/js/status.js"></script>
-    <script src="/js/wifi.js"></script>
-    <script src="/js/ota.js"></script>
-    <script src="/js/main.js"></script> -->
   </body>
 </html>
