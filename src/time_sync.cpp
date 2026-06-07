@@ -90,11 +90,11 @@ bool getRtcTime(struct tm* timeinfo) {
     return 1;
 }
 
-void sync_time() {
+bool sync_time() {
     if (WiFi.status() != WL_CONNECTED) {
         Serial.println("WiFi not connected — cannot sync time");
         // restore_rtc();
-        return;
+        return 0;
     }
     Serial.print("NTP sync...");
     configTime(0, 0, "pool.ntp.org", "time.nist.gov");
@@ -115,9 +115,12 @@ void sync_time() {
         Serial.printf("RTC updated to: %04d-%02d-%02d %02d:%02d:%02d\n",
             rtc.now().year(), rtc.now().month(), rtc.now().day(),
             rtc.now().hour(), rtc.now().minute(), rtc.now().second());
+
+        return 1;
     }
     else {
         Serial.println(" FAILED — keeping RTC time");
+        return 0;
         // restore_rtc();
     }
 }
@@ -142,7 +145,7 @@ void doNtpSync() {
 
     if (WiFi.status() != WL_CONNECTED) {
         Serial.println("\nNTP: WiFi failed — keeping RTC time, retry in 24 h");
-        restore_rtc();
+        // restore_rtc();
         rtcNvNtpPending = true;
         // Update last-attempt time so retry fires 24 h from now
         DateTime now = rtc.now();
@@ -153,14 +156,10 @@ void doNtpSync() {
     }
 
     Serial.println("\nNTP: WiFi OK — syncing...");
-    sync_time();  // sets system clock + pushes to PCF8563
-
-    time_t now = 0;
-    time(&now);
-
-    if (now > 1000000000L) {
+    if (sync_time()) {
         Serial.println("NTP: sync successful");
-        rtcNvLastNtpEpoch = (uint32_t) now;
+        DateTime now = rtc.now();
+        rtcNvLastNtpEpoch = (uint32_t) now.unixtime();
         rtcNvNtpPending = false;
         rtcNvRetryDays = 0;
     }

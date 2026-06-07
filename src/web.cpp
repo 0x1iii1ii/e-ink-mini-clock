@@ -280,6 +280,9 @@ void handleSaveClock() {
 
   save_config();
   server.send(200, "application/json", "{\"ok\":true}");
+
+  delay(2000);
+  ESP.restart();
 }
 
 // ── POST /save-wifi ────────────────────────────────────────

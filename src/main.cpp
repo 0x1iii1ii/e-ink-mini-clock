@@ -63,8 +63,7 @@ unsigned long lastSensorRead = 0;
 
 uint8_t g_batteryPct = 0;
 bool    g_isVbusConnected = false;
-bool    g_powerSaveMode = false;
-bool    g_enSplash = false;
+bool    g_powerSaveMode = true;
 
 
 // ════════════════════════════════════════════════════════════
@@ -122,15 +121,15 @@ void setup() {
   // ── First boot / factory state ────────────────────────
   if (strlen(cfg.wifi->ssid) == 0 || strlen(cfg.wifi->password) == 0) {
     Serial.println("No WiFi configured — entering portal mode");
-    enterPortalMode(true);   // blocks for 60 s then sleeps
+    enterPortalMode(true);
   }
 
   // ── Power saving mode ───────────────────────────────────
-  if (!g_powerSaveMode) {
+  if (!cfg.clockCfg.powerSave) {
+    Serial.println("Power save mode: OFF — full features enabled");
+    g_powerSaveMode = false;
     // ── WiFi initialization ──────────────────────────────
-    wifi_init();
-    // ── Web server initialization ─────────────────────────
-    web_init();
+    if (wifi_init()) web_init(); // start web server only if WiFi connected
     // ── First draw ────────────────────────────────────────
     drawDisplay();
   }
@@ -140,24 +139,24 @@ void setup() {
     //   Serial.println("Portal button held — entering setup mode");
     //   enterPortalMode();
     // }
-    if (rtcNvBootCount == 1) {
-      Serial.println("First boot — entering portal mode");
-      enterPortalMode();   // blocks for 60 s then sleeps
-    }
     // ── NTP sync (WiFi only when needed) ─────────────────
     if (shouldSyncNtp()) {
       doNtpSync();
     }
     else {
-      // Restore system clock from RTC (no WiFi needed)
-      restore_rtc();
-      Serial.println("Clock from RTC — WiFi skipped");
+      // // Restore system clock from RTC (no WiFi needed)
+      // restore_rtc();
+      Serial.println("Clock from RTC — skipped sync");
     }
-    Serial.println("No WiFi — skipping display (portal mode)");
     // ── Draw display ─────────────────────────────────────
     drawDisplay();
+    // ── spawn the web for the first power on ───────────────
+    if (rtcNvBootCount == 1) {
+      Serial.println("First boot — entering portal mode");
+      enterPortalMode();   // blocks for 60 s then sleeps
+    }
     // // ── Go back to sleep ─────────────────────────────────
-    goToDeepSleep();
+    // goToDeepSleep();
   }
 }
 
@@ -166,6 +165,7 @@ void setup() {
 // ════════════════════════════════════════════════════════════
 void loop() {
   if (!g_powerSaveMode) {
+    maintainWifi();
     web_loop();
     unsigned long ms = millis();
     // Read sensors every second for smooth display updates

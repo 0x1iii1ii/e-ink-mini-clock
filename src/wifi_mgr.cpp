@@ -11,6 +11,11 @@ config_t cfg;
 extern uint32_t rtcNvLastNtpEpoch;
 extern bool     rtcNvNtpPending;
 
+static uint32_t lastWifiCheck = 0;
+static uint32_t lastSensorRead = 0;
+static uint32_t lastRefresh = 0;
+static uint8_t  wifiRetryCount = 0;
+
 void init_fs() {
     rtcNvBootCount = 0;
     rtcNvLastNtpEpoch = 0;
@@ -164,12 +169,52 @@ void erase_config() {
     }
 }
 
-void wifi_init() {
+// ── WiFi reconnect ────────────────────────────────────
+void maintainWifi() {
+    if (WiFi.status() == WL_CONNECTED) {
+        wifiRetryCount = 0;   // reset on success
+        return;
+    }
+
+    uint32_t now = millis();
+
+    // Back off longer after repeated failures
+    uint32_t interval = (wifiRetryCount >= WIFI_RETRY_MAX)
+        ? WIFI_RETRY_LONG
+        : WIFI_CHECK_INTERVAL;
+
+    if (now - lastWifiCheck < interval) return;
+    lastWifiCheck = now;
+
+    Serial.println("[WiFi] Disconnected — reconnecting (attempt " +
+        String(wifiRetryCount + 1) + ")");
+
+    WiFi.disconnect(false);
+    WiFi.begin();   // uses saved credentials
+
+    uint32_t start = millis();
+    while (WiFi.status() != WL_CONNECTED &&
+        millis() - start < WIFI_CONNECT_TIMEOUT) {
+        delay(200);
+    }
+
+    if (WiFi.status() == WL_CONNECTED) {
+        Serial.println("[WiFi] Reconnected — IP: " + WiFi.localIP().toString());
+        wifiRetryCount = 0;
+    }
+    else {
+        wifiRetryCount++;
+        Serial.println("[WiFi] Failed — retry count: " + String(wifiRetryCount));
+    }
+}
+
+bool wifi_init() {
     WiFi.setHostname(cfg.hostname);
     if (strlen(cfg.wifi->ssid) > 0 && strlen(cfg.wifi->password) > 0) {
         WiFi.mode(WIFI_STA);
         WiFi.begin(cfg.wifi->ssid, cfg.wifi->password);
         unsigned long t0 = millis();
+        Serial.print("Connecting to: " + String(cfg.wifi->ssid) + "...");
         while (WiFi.status() != WL_CONNECTED && millis() - t0 < 15000) {
             delay(300);
             Serial.print('.');
@@ -184,22 +229,10 @@ void wifi_init() {
         Serial.println(String("Hostname: ") + WiFi.getHostname());
         MDNS.begin(cfg.hostname);
         sync_time();
+        return true; // connected
     }
     else {
-        Serial.println("\nWiFi failed, continuing without WiFi");
-        // restore_rtc();
+        Serial.println("\nWiFi connection failed, going offline");
+        return false; // not connected
     }
-    // if (WiFi.status() != WL_CONNECTED) {
-    //     Serial.println("\nNo WiFi — starting AP mode");
-    //     // // Use RTC to keep the clock running without NTP
-    //     restore_rtc();
-    //     WiFi.mode(WIFI_AP);
-    //     WiFi.softAP(AP_SSID, AP_PASS);
-    //     showSetupScreen();
-    // }
-    // else {
-    //     Serial.println("\nWiFi: " + WiFi.localIP().toString());
-    //     MDNS.begin(cfg.hostname);
-    //     sync_time();
-    // }
 }

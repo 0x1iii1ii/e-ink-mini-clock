@@ -23,7 +23,7 @@
 // #define FW_VERSION       "1.0.5"
 #define DEVICE_NAME      "ESP32-C3 E-Ink Clock"
 #define CONFIG_FILE      "/config.json"
-#define AP_SSID          "Eink-Clock-Setup"
+#define AP_SSID          "E-ink Clock"
 #define AP_PASS          "12345678"
 
 // ============================================================================

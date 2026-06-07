@@ -18,7 +18,7 @@ extern uint8_t  rtcNvRetryDays;
 bool getRtcTime(struct tm* timeinfo);
 void rtc_init();
 void restore_rtc();
-void sync_time();
+bool sync_time();
 bool shouldSyncNtp();
 void doNtpSync();
 

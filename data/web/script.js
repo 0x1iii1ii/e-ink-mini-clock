@@ -286,7 +286,7 @@ if (clockForm) {
       })
       .then(function (d) {
         showAlert(
-          d.ok ? "Clock settings saved!" : "✗ " + d.msg,
+          d.ok ? "Clock settings saved! Rebooting" : "saved failed, try again!" + d.msg,
           d.ok ? "ok" : "er",
         );
       })
