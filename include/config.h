@@ -26,7 +26,7 @@
 #define AP_SSID          "E-ink Clock"
 #define AP_PASS          "12345678"
 
-#define WEB_SPAWN_TIMEOUT_MS 30000UL  // 1.5 minutes to configure before sleeping
+#define WEB_SPAWN_TIMEOUT_MS 90000UL  // 1.5 minutes to configure before sleeping
 #define WEB_SPAWN_SETUP_MODE_MS 900000UL  // 15 minutes in setup mode before sleeping
 
 // ============================================================================
