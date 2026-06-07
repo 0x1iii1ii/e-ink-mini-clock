@@ -4,6 +4,7 @@
 
 #include "global.h"
 #include "system.h"
+#include "battery.h"
 
 /*
 - During normal operation: sleep refreshMin.
@@ -55,6 +56,11 @@ uint32_t secondsUntilQuietEnd() {
 // ════════════════════════════════════════════════════════════
 
 void goToDeepSleep() {
+    if (isVbusConnected()) {
+        Serial.println("USB power detected — staying awake");
+        g_powerSaveMode = false;
+        return;
+    }
     uint32_t sleepSec = effectiveRefreshSec();
     uint64_t sleepUs = (uint64_t) sleepSec * 1000000ULL;
     if (isInQuietHours() && sleepSec > (cfg.clockCfg.refreshMin * 60UL)) {
@@ -73,8 +79,8 @@ void goToDeepSleep() {
     // Wake on timer
     esp_sleep_enable_timer_wakeup(sleepUs);
     // Wake on user button press or plugging in power
-    gpio_wakeup_enable((gpio_num_t) VBUS_PIN, GPIO_INTR_HIGH_LEVEL);
     esp_sleep_enable_gpio_wakeup();
+    gpio_wakeup_enable((gpio_num_t) VBUS_PIN, GPIO_INTR_HIGH_LEVEL);
     esp_deep_sleep_start();
 }
 
@@ -86,7 +92,7 @@ void enterPortalMode(bool factory) {
     Serial.println("Starting WiFi + web portal...");
 
     // Longer timeout for factory reset (no config) to give user more time to connect
-    unsigned long timeoutMs = (factory) ? 900000UL : 90000UL;
+    unsigned long timeoutMs = (factory) ? WEB_SPAWN_SETUP_MODE_MS : WEB_SPAWN_TIMEOUT_MS;
 
     // Start WiFi in AP mode and web server for configuration portal
     if (factory) {
@@ -104,6 +110,9 @@ void enterPortalMode(bool factory) {
 
     unsigned long portalStart = millis();
     while (millis() - portalStart < timeoutMs) {
+        if (factory && isVbusConnected()) {
+            timeoutMs += 10; // keep extending timeout while USB power is connected
+        }
         web_loop();
         delay(10);
     }

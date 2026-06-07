@@ -73,7 +73,7 @@ void setup() {
   Serial.begin(115200);
   // Short delay only on first boot; skip on subsequent wakes to save time
   // if (rtcNvBootCount == 0) delay(2000);
-  delay(3000);  // wait for serial monitor
+  // delay(3000);  // wait for serial monitor
 
   // ── Load config from LittleFS ─────────────────────────
   init_fs();
@@ -155,6 +155,10 @@ void setup() {
       Serial.println("First boot — entering portal mode");
       enterPortalMode();   // blocks for 60 s then sleeps
     }
+    else {
+      Serial.println("going to sleep");
+      goToDeepSleep();
+    }
     // // ── Go back to sleep ─────────────────────────────────
     // goToDeepSleep();
   }
@@ -183,9 +187,21 @@ void loop() {
     if (ms - lastRefresh >= static_cast<unsigned long>(cfg.clockCfg.refreshMin) * 60000UL) {
       lastRefresh = ms;
       // sync_time();
-      time(&lastRefreshEpoch);
+      DateTime d = rtc.now();
+      lastRefreshEpoch = d.unixtime();
       drawDisplay();
     }
-    delay(50);
+
+    if (!isVbusConnected() && cfg.clockCfg.powerSave) {
+      Serial.println("USB power lost — entering power save mode");
+      if (WiFi.status() == WL_CONNECTED) {
+        Serial.println("Disconnecting WiFi for power saving...");
+        WiFi.disconnect(true);
+      }
+      g_powerSaveMode = true;
+      goToDeepSleep();
+    }
+
+    delay(10);
   }
 }

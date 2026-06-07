@@ -198,7 +198,7 @@ void handleStatus() {
   char fsBuf[24];
   snprintf(fsBuf, sizeof(fsBuf), "%u / %u KB", fsUsedKB, fsTotalKB);
 
-  lastRefreshEpoch = now;
+  // lastRefreshEpoch = now;
 
   // Last refresh timestamp
   char lastRefBuf[20] = "Never";

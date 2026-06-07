@@ -192,13 +192,13 @@ void drawDisplay() {
   // ── BIG CLOCK ────────────────────────────────────────
   bigFont.drawTime(hr, min, EPD_BLACK);
 
-  // AM/PM — top-right of clock area, above bottom bar
-  if (cfg.clockCfg.hour12) {
-    gfx.setTextColor(EPD_BLACK);
-    gfx.setTextSize(TEXT_SIZE);
-    gfx.setCursor(SCREEN_W2 - AMPM_W - 4, LINE_TOP_BAR + 4);
-    gfx.print(pm ? "PM" : "AM");
-  }
+  // // AM/PM — top-right of clock area, above bottom bar
+  // if (cfg.clockCfg.hour12) {
+  //   gfx.setTextColor(EPD_BLACK);
+  //   gfx.setTextSize(TEXT_SIZE);
+  //   gfx.setCursor(SCREEN_W2 - AMPM_W - 4, LINE_TOP_BAR + 4);
+  //   gfx.print(pm ? "PM" : "AM");
+  // }
 
   // ── BOTTOM BAR ───────────────────────────────────────
   const String ipStr = "IP:" + WiFi.localIP().toString();

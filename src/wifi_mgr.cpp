@@ -17,10 +17,6 @@ static uint32_t lastRefresh = 0;
 static uint8_t  wifiRetryCount = 0;
 
 void init_fs() {
-    rtcNvBootCount = 0;
-    rtcNvLastNtpEpoch = 0;
-    rtcNvNtpPending = true;
-    rtcNvRetryDays = 0;
     if (!LittleFS.begin()) {
         Serial.println("LittleFS failed, formatting...");
         LittleFS.format();
@@ -189,7 +185,7 @@ void maintainWifi() {
     Serial.println("[WiFi] Disconnected — reconnecting (attempt " +
         String(wifiRetryCount + 1) + ")");
 
-    WiFi.disconnect(false);
+    // WiFi.disconnect(false);
     WiFi.begin();   // uses saved credentials
 
     uint32_t start = millis();

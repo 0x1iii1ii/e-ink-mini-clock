@@ -71,6 +71,7 @@ extern float g_humidity;
 // ===== IO =====
 extern uint8_t g_batteryPct;
 extern bool    g_isVbusConnected;
+extern bool    g_powerSaveMode;
 
 // ===== SYSTEM STATE =====
 extern time_t lastRefreshEpoch;
