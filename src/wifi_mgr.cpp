@@ -67,7 +67,7 @@ void load_config() {
     strlcpy(cfg.wifi->password, doc["password"] | "", sizeof cfg.wifi->password);
     strlcpy(cfg.hostname, doc["hostname"] | "eink-clock", sizeof cfg.hostname);
     cfg.clockCfg.utcOffset = doc["utcOffset"] | 7;
-    cfg.clockCfg.refreshMin = doc["refreshMin"] | 5;
+    cfg.clockCfg.refreshMin = doc["refreshMin"] | 3;
     cfg.clockCfg.ntpSyncDays = doc["ntpSyncDays"] | 7;
     cfg.clockCfg.ntpReSyncDays = doc["ntpReSyncDays"] | 1;
     cfg.clockCfg.quietStart = doc["quietStart"] | 23;
@@ -121,7 +121,7 @@ void save_config() {
     StaticJsonDocument<512> doc;
     doc["ssid"] = cfg.wifi->ssid;
     doc["password"] = cfg.wifi->password;
-    doc["hostnameVal"] = cfg.hostname;
+    doc["hostname"] = cfg.hostname;
     doc["utcOffset"] = cfg.clockCfg.utcOffset;
     doc["refreshMin"] = cfg.clockCfg.refreshMin;
     doc["ntpSyncDays"] = cfg.clockCfg.ntpSyncDays;
