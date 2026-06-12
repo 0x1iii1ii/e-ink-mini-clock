@@ -128,7 +128,7 @@ void drawDisplay() {
   const int SCREEN_W2 = 360;
   const int TOP_Y = 3;
   const int BOTTOM_Y = 175;
-  const int ITEM_SPACING = 8;
+  const int ITEM_SPACING = 6;
   const int TEXT_SIZE = 2;
 
   // Approximate pixel widths at textSize 2 (6px per char * 2 = 12px/char)
@@ -150,17 +150,19 @@ void drawDisplay() {
   drawBattery(rightX, TOP_Y - 1, g_batteryPct, g_isVbusConnected);
   rightX -= ITEM_SPACING;
 
-  // if (cfg.clockCfg.showBattPct) {
-  //   rightX -= BATT_PCT_W;
-  //   gfx.setTextColor(EPD_BLACK);
-  //   gfx.setTextSize(TEXT_SIZE);
-  //   gfx.setCursor(rightX, TOP_Y);
-  //   gfx.print(g_batteryPct);
-  //   gfx.print("%");
-  //   rightX -= ITEM_SPACING;
-  // }
-
-  if (cfg.clockCfg.showRssi) {
+  // will only show battery % if power saving mode is on
+  if (cfg.clockCfg.powerSave) {
+    if (cfg.clockCfg.showBattPct) {
+      rightX -= BATT_PCT_W;
+      gfx.setTextColor(EPD_BLACK);
+      gfx.setTextSize(TEXT_SIZE);
+      gfx.setCursor(rightX, TOP_Y);
+      gfx.print(g_batteryPct);
+      gfx.print("%");
+      rightX -= ITEM_SPACING;
+    }
+  }
+  else if (cfg.clockCfg.showRssi) {
     rightX -= WIFI_W;
     drawWifiBars(rightX, TOP_Y - 5, WiFi.RSSI());
     rightX -= ITEM_SPACING;

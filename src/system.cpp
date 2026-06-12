@@ -115,6 +115,11 @@ void enterPortalMode(bool factory) {
         if (factory && isVbusConnected()) {
             portalStart = millis(); // reset the start time
         }
+        // Keep alive if something important is happening
+        bool webBusy = isWebClientActive();   // user is browsing/submitting
+        if (webBusy) {
+            portalStart = millis(); // extend deadline
+        }
         web_loop();
         delay(10);
     }

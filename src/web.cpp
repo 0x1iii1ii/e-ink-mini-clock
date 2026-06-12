@@ -19,6 +19,7 @@ HTTPUpdateServer httpUpdater;
 // Uptime tracking (seconds since boot)
 static unsigned long _bootMs = 0;
 time_t lastRefreshEpoch = 0;
+unsigned long lastHttpActivityMs; // updated on every request handler call
 
 // ── Static file helper ─────────────────────────────────────
 
@@ -36,6 +37,10 @@ static const GzResource gz_resources[] = {
   { "/script.js", (const unsigned char*) script_js, sizeof(script_js), "application/javascript" },
   { "/favicon.ico", (const unsigned char*) favicon_ico, sizeof(favicon_ico), "image/x-icon" },
 };
+
+bool isWebClientActive() {
+  return (millis() - lastHttpActivityMs) < 5000; // active within last 5s
+}
 
 bool handleFileRead(String path) {
   // Normalize root path
@@ -75,6 +80,8 @@ void addCORSHeaders() {
 
 void handleConfig() {
   addCORSHeaders();
+  lastHttpActivityMs = millis();
+
   String json = "{";
   json += "\"ssid\":\"" + String(cfg.wifi->ssid) + "\",";
   json += "\"hostname\":\"" + String(cfg.hostname) + "\",";
@@ -171,6 +178,7 @@ void handleCheckUpdate() {
 
 void handleStatus() {
   addCORSHeaders();
+  lastHttpActivityMs = millis();
 
   struct tm t;
   if (!getRtcTime(&t)) {
@@ -318,6 +326,8 @@ void handleSaveHostname() {
 
 void handleAction() {
   addCORSHeaders();
+  lastHttpActivityMs = millis();
+
   String cmd = server.arg("cmd");
 
   if (cmd == "refresh") {

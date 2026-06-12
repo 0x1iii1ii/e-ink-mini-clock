@@ -11,6 +11,8 @@
 #include "WiFiClientSecure.h"
 #include <HTTPUpdate.h>
 
+extern unsigned long lastHttpActivityMs;
+bool isWebClientActive();
 String htmlHead(const char* title = "e-Ink Clock");
 void handleRoot();
 void handleSave();
