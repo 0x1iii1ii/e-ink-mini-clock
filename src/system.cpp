@@ -61,6 +61,8 @@ void goToDeepSleep() {
         g_powerSaveMode = false;
         return;
     }
+    WiFi.disconnect(true);
+    WiFi.mode(WIFI_OFF);
     uint32_t sleepSec = effectiveRefreshSec();
     uint64_t sleepUs = (uint64_t) sleepSec * 1000000ULL;
     if (isInQuietHours() && sleepSec > (cfg.clockCfg.refreshMin * 60UL)) {
@@ -106,23 +108,23 @@ void enterPortalMode(bool factory) {
     }
     web_init();
 
-    Serial.printf("Web Portal running for %d s timeout...", timeoutMs / 1000);
+    Serial.printf("Web Portal running for %lu s timeout...", timeoutMs / 1000);
 
     unsigned long portalStart = millis();
     while (millis() - portalStart < timeoutMs) {
         if (factory && isVbusConnected()) {
-            timeoutMs += 10; // keep extending timeout while USB power is connected
+            portalStart = millis(); // reset the start time
         }
         web_loop();
         delay(10);
     }
 
     Serial.println("Portal timeout — going back to sleep");
-    WiFi.disconnect(true);
-    WiFi.mode(WIFI_OFF);
     if (factory) {
         // after timeout during configuration, 
         // go to deep sleep to wait for next power on
+        WiFi.disconnect(true);
+        WiFi.mode(WIFI_OFF);
         esp_deep_sleep_start();
     }
     goToDeepSleep();

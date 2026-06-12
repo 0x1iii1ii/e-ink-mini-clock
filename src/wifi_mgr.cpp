@@ -186,6 +186,7 @@ void maintainWifi() {
         String(wifiRetryCount + 1) + ")");
 
     // WiFi.disconnect(false);
+    WiFi.setHostname(cfg.hostname);
     WiFi.begin();   // uses saved credentials
 
     uint32_t start = millis();
@@ -195,6 +196,7 @@ void maintainWifi() {
     }
 
     if (WiFi.status() == WL_CONNECTED) {
+        Serial.println("mDNS started");
         Serial.println("[WiFi] Reconnected — IP: " + WiFi.localIP().toString());
         wifiRetryCount = 0;
     }
