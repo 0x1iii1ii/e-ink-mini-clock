@@ -18,15 +18,17 @@ BigFont bigFont(gfx);
 const char* days[] = { "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT" };
 const char* months[] = { "JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC" };
 
-void epd_init() {
+bool epd_init() {
   // ── e-Paper ──────────────────────────────────────────
   Serial.println("Init e-paper...");
   if (epd.Init() != 0) {
     Serial.println("FAILED — check wiring and PWR pin!");
+    return false;
   }
   else {
     Serial.println("e-Paper OK.");
   }
+  return true;
 }
 
 // ════════════════════════════════════════════════════════════
@@ -122,6 +124,7 @@ void drawDisplay() {
     months[t.tm_mon] + "-" +
     String(1900 + t.tm_year);
 
+  Serial.println("filling white");
   gfx.fillScreen(EPD_WHITE);
 
   // ── Constants ────────────────────────────────────────
@@ -232,11 +235,11 @@ void drawDisplay() {
   gfx.setTextColor(EPD_BLACK);
   gfx.setCursor(SCREEN_W2 - rightW - 4, BOTTOM_Y);
   gfx.print(rightStr);
+  gfx.display();
 
   Serial.println("[Display] Updated — " + dateStr +
     " " + zp(hr) + ":" + zp(min) +
     (cfg.clockCfg.hour12 ? (pm ? " PM" : " AM") : ""));
-  gfx.display();
 }
 
 void showSetupScreen() {

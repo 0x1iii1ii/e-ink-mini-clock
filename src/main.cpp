@@ -73,7 +73,7 @@ void setup() {
   Serial.begin(115200);
   // Short delay only on first boot; skip on subsequent wakes to save time
   // if (rtcNvBootCount == 0) delay(2000);
-  // delay(3000);  // wait for serial monitor
+  delay(3000);  // wait for serial monitor
 
   // ── Load config from LittleFS ─────────────────────────
   init_fs();
@@ -105,7 +105,10 @@ void setup() {
   delay(100);
   rtc_init();
   delay(100);
-  epd_init();
+  if (!epd_init()) {
+    Serial.println("e-Paper init failed — going to sleep");
+    goToDeepSleep();
+  }
 
   // ── GPIO (charger / VBUS sense) ──────────────────────
   pinMode(USER_BUTTON, INPUT);
@@ -194,10 +197,6 @@ void loop() {
 
     if (!isVbusConnected() && cfg.clockCfg.powerSave) {
       Serial.println("USB power lost — entering power save mode");
-      if (WiFi.status() == WL_CONNECTED) {
-        Serial.println("Disconnecting WiFi for power saving...");
-        WiFi.disconnect(true);
-      }
       g_powerSaveMode = true;
       goToDeepSleep();
     }

@@ -9,7 +9,7 @@
 #include "wifi_mgr.h"
 #include "time_sync.h"
 
-void epd_init();
+bool epd_init();
 void drawBattery(int x, int y, uint8_t pct, bool charging = false);
 void drawWifiBars(int x, int y, int rssi);
 void drawDisplay();
