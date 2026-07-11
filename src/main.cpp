@@ -57,6 +57,7 @@
 #include "battery.h"
 #include "button.h"
 #include "system.h"
+ // #include "WebSerial.h"
 
 unsigned long lastRefresh = 0;
 unsigned long lastSensorRead = 0;
@@ -65,7 +66,45 @@ uint8_t g_batteryPct = 0;
 bool    g_isVbusConnected = false;
 bool    g_powerSaveMode = true;
 
+bool lastB1 = HIGH;
+bool lastB2 = HIGH;
 
+void beep(int freq, int duration) {
+  tone(BZ_PIN, freq);
+  delay(duration);
+  noTone(BZ_PIN);
+}
+void alarmSound() {
+  Serial.println("=== ALARM ===");
+
+  unsigned long start = millis();
+
+  while (millis() - start < 3000) {
+    // Beep Beep
+    tone(BZ_PIN, 2700);
+    delay(90);
+    noTone(BZ_PIN);
+    delay(40);
+
+    tone(BZ_PIN, 2700);
+    delay(90);
+    noTone(BZ_PIN);
+    delay(180);
+  }
+}
+void alarmSound2() {
+  unsigned long start = millis();
+
+  while (millis() - start < 5000) {
+    tone(BZ_PIN, 2400);
+    delay(80);
+    tone(BZ_PIN, 3000);
+    delay(80);
+    noTone(BZ_PIN);
+    delay(120);
+  }
+}
+// EPD_266 epd2;
 // ════════════════════════════════════════════════════════════
 //  Setup
 // ════════════════════════════════════════════════════════════
@@ -105,11 +144,21 @@ void setup() {
   delay(100);
   rtc_init();
   delay(100);
-  if (!epd_init()) {
-    Serial.println("e-Paper init failed — going to sleep");
-    goToDeepSleep();
-  }
-
+  // epd2.begin();
+  epd_init();
+  // if (!epd_init()) {
+  //   Serial.println("e-Paper init failed — going to sleep");
+  //   goToDeepSleep();
+  // }
+  pinMode(B1_PIN, INPUT);
+  pinMode(B2_PIN, INPUT);
+  pinMode(BZ_PIN, OUTPUT);
+  delay(100);
+  beep(1200, 80);
+  delay(30);
+  beep(1800, 80);
+  delay(30);
+  beep(2400, 120);
   // ── GPIO (charger / VBUS sense) ──────────────────────
   pinMode(USER_BUTTON, INPUT);
   pinMode(VBUS_PIN, INPUT);
@@ -167,18 +216,62 @@ void setup() {
   }
 }
 
+// void drawScreen0() {
+//   epd2.clear();
+//   epd2.setRotation(ROT_180);
+//   epd2.drawString(10, 10, "Screen 0", LAYER_BW);
+//   epd2.drawString(10, 30, "Normal orientation", LAYER_RED);
+//   epd2.drawRect(5, 50, 100, 40, LAYER_RED);
+//   epd2.drawLine(0, 0, 150, 80, LAYER_BW);
+//   epd2.displayFull();
+// }
+
 // ════════════════════════════════════════════════════════════
 //  Loop
 // ════════════════════════════════════════════════════════════
 void loop() {
+  bool b1 = digitalRead(B1_PIN);
+  bool b2 = digitalRead(B2_PIN);
+
+  // Both buttons pressed
+  if (b1 == LOW && b2 == LOW) {
+    alarmSound2();
+
+    // Wait until both buttons are released
+    while (digitalRead(B1_PIN) == LOW || digitalRead(B2_PIN) == LOW) {
+      delay(10);
+    }
+
+    lastB1 = HIGH;
+    lastB2 = HIGH;
+    return;
+  }
+
+  if (lastB1 == HIGH && b1 == LOW) {
+    Serial.println("B1 Pressed");
+    beep(2500, 100);
+  }
+
+  if (lastB2 == HIGH && b2 == LOW) {
+    Serial.println("B2 Pressed");
+    beep(1200, 80);
+    delay(50);
+    beep(1200, 80);
+  }
+
+  lastB1 = b1;
+  lastB2 = b2;
+
   if (!g_powerSaveMode) {
     maintainWifi();
     web_loop();
     unsigned long ms = millis();
     // Read sensors every second for smooth display updates
-    if (ms - lastSensorRead >= 10000UL) {
+    if (ms - lastSensorRead >= 60000UL) {
       lastSensorRead = ms;
       aht20_read();
+      // drawScreen0();
+      drawDisplay();
       g_batteryPct = readBattery();
       g_isVbusConnected = isVbusConnected();
       Serial.println("\nUpdated Sensor Values: \n");
@@ -192,7 +285,7 @@ void loop() {
       // sync_time();
       DateTime d = rtc.now();
       lastRefreshEpoch = d.unixtime();
-      drawDisplay();
+      // drawDisplay();
     }
 
     if (!isVbusConnected() && cfg.clockCfg.powerSave) {
@@ -200,7 +293,6 @@ void loop() {
       g_powerSaveMode = true;
       goToDeepSleep();
     }
-
-    delay(10);
   }
+  delay(1);
 }

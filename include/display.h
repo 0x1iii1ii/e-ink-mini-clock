@@ -8,6 +8,9 @@
 #include <Arduino.h>
 #include "wifi_mgr.h"
 #include "time_sync.h"
+#include "epd_266.h"
+#include "epd_gfx.h"
+#include "clock_digit.h"
 
 bool epd_init();
 void drawBattery(int x, int y, uint8_t pct, bool charging = false);

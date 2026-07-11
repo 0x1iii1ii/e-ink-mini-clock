@@ -14,8 +14,8 @@
 #include <WiFi.h>
 #include <Wire.h>
 #include <ctime>
-#include "epd2in66g.h"
-#include "epd_font_big.h"
+#include "epd_266.h"
+#include "clock_digit.h"
 #include "epd_gfx.h"
 #include <Adafruit_AHTX0.h>
 #include <RTClib.h>

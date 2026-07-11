@@ -392,6 +392,9 @@ void web_init() {
   server.on("/action", HTTP_POST, handleAction);
 
   // Serial log streaming (SSE)
+  // server.on("/api/log", HTTP_GET, []() { server.send(200, "text/plain", weblog.getBuffer()); });
+  // server.on("/api/log/clear", HTTP_POST, []() { weblog.clear(); server.send(200, "text/plain", "ok"); });
+
   server.on("/ota-url", HTTP_POST, handleOtaUrl);
   server.on("/check-update", HTTP_GET, handleCheckUpdate);
 

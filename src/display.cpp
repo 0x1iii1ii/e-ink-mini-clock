@@ -6,13 +6,11 @@
 #include "display.h"
 
  // ════════════════════════════════════════════════════════════
- //  Frame buffer
- //  184 × 360 px, 2 bits/pixel → 184/4 × 360 = 46 × 360 = 16560 bytes
+ //  EPD_266 owns its own bufferBW/bufferR internally — no external
+ //  framebuffer needed here anymore.
  // ════════════════════════════════════════════════════════════
-static UBYTE frameBuf[EPD_BUFFER_SIZE];
-
-Epd     epd;
-EpdGfx  gfx(epd, frameBuf);
+EPD_266 epd;
+EpdGfx  gfx(epd);
 BigFont bigFont(gfx);
 
 const char* days[] = { "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT" };
@@ -21,13 +19,9 @@ const char* months[] = { "JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG",
 bool epd_init() {
   // ── e-Paper ──────────────────────────────────────────
   Serial.println("Init e-paper...");
-  if (epd.Init() != 0) {
-    Serial.println("FAILED — check wiring and PWR pin!");
-    return false;
-  }
-  else {
-    Serial.println("e-Paper OK.");
-  }
+  epd.begin();
+  epd.setRotation(ROT_180);
+  Serial.println("e-Paper OK.");
   return true;
 }
 
@@ -40,13 +34,12 @@ String zp(int v) { return (v < 10 ? "0" : "") + String(v); }
  * Battery icon — 28 × 16 px (body 25 × 16 + nub 3 × 8)
  *
  *  pct      : 0-100 fill level
- *  charging : true  → draw yellow lightning bolt over the body
+ *  charging : true  → draw a red lightning bolt over the body
  *             false → normal colour-coded fill only
  *
- *  Fill colour thresholds:
+ *  Fill colour thresholds (panel only has black/red, no yellow):
  *    > 50 %  → BLACK   (normal)
- *    > 20 %  → YELLOW  (warning)
- *    ≤ 20 %  → RED     (critical)
+ *    ≤ 50 %  → RED     (low/warning)
  */
 
 void drawBattery(int x, int y, uint8_t pct, bool charging) {
@@ -57,15 +50,13 @@ void drawBattery(int x, int y, uint8_t pct, bool charging) {
 
   // ── Charge fill ──────────────────────────────────────────
   uint8_t fillW = (uint8_t) (pct * 23 / 100);
-  UBYTE   col = (pct > 50) ? EPD_BLACK
-    : (pct > 20) ? EPD_YELLOW
-    : EPD_RED;
+  UBYTE   col = (pct > 50) ? EPD_BLACK : EPD_RED;
   if (fillW > 0)
     gfx.fillRect(x + 1, y + 1, fillW, 14, col);
 
   // ── Charging bolt overlay ─────────────────────────────────
   if (charging) {
-    const UBYTE BLT = EPD_YELLOW;
+    const UBYTE BLT = EPD_RED;
     int yoff = 1;  // move bolt down
     int xoff = -2;  // move bolt left
     for (int dy = 0; dy <= 1; dy++) {
@@ -105,10 +96,14 @@ void drawWifiBars(int x, int y, int rssi) {
 // ════════════════════════════════════════════════════════════
 void drawDisplay() {
   struct tm t;
-  if (!getRtcTime(&t)) {
-    Serial.println("[Display] RTC read failed");
+  if (!getLocalTime(&t)) {
+    Serial.println("Failed to obtain time");
     return;
   }
+  // if (!getRtcTime(&t)) {
+  //   Serial.println("[Display] RTC read failed");
+  //   return;
+  // }
 
   // ── Time processing ──────────────────────────────────
   int hr = t.tm_hour;
@@ -127,12 +122,12 @@ void drawDisplay() {
   Serial.println("filling white");
   gfx.fillScreen(EPD_WHITE);
 
-  // ── Constants ────────────────────────────────────────
-  const int SCREEN_W2 = 360;
+  // ── Constants (296 x 152 EPD_266 panel) ───────────────
+  const int SCREEN_W2 = EPD_WIDTH;
   const int TOP_Y = 3;
-  const int BOTTOM_Y = 175;
+  const int BOTTOM_Y = EPD_HEIGHT - 9;
   const int ITEM_SPACING = 6;
-  const int TEXT_SIZE = 2;
+  const int TEXT_SIZE = 1;
 
   // Approximate pixel widths at textSize 2 (6px per char * 2 = 12px/char)
   const int BATT_ICON_W = 30;   // battery icon
@@ -218,7 +213,7 @@ void drawDisplay() {
   if (host.length() > 12) host = host.substring(0, 11) + "~";
 
   // Build one right-side string
-  const String rightStr = host + ".local | " + String(FW_VERSION) +
+  const String rightStr = /* host + ".local | " + */ String(FW_VERSION) +
     " | " + wifiStr +
     " | " + (cfg.clockCfg.hour12 ? hrStr : utcStr);
 
@@ -246,13 +241,13 @@ void showSetupScreen() {
   gfx.fillScreen(EPD_WHITE);
 
   // Red title bar
-  gfx.fillRect(0, 0, 360, 34, EPD_RED);
+  gfx.fillRect(0, 0, EPD_WIDTH, 34, EPD_RED);
   gfx.setTextColor(EPD_WHITE);
   gfx.setTextSize(2);
   gfx.setCursor(8, 9);
   gfx.print("E-Ink Mini Clock - SETUP MODE");
 
-  gfx.drawHLine(0, 34, 360, EPD_BLACK);
+  gfx.drawHLine(0, 34, EPD_WIDTH, EPD_BLACK);
 
   // Step 1
   gfx.setTextColor(EPD_BLACK);
@@ -269,49 +264,43 @@ void showSetupScreen() {
   gfx.print("password: 12345678");
 
   // Vertical divider
-  gfx.drawVLine(180, 34, 100, EPD_BLACK);
+  gfx.drawVLine(EPD_WIDTH / 2, 34, 66, EPD_BLACK);
 
   // Step 2
-  gfx.setCursor(192, 44);
+  gfx.setCursor(EPD_WIDTH / 2 + 12, 44);
   gfx.print("2. Open in browser:");
   gfx.setTextColor(EPD_RED);
   gfx.setTextSize(2);
-  gfx.setCursor(192, 56);
+  gfx.setCursor(EPD_WIDTH / 2 + 12, 56);
   gfx.print("192.168.4.1");
   gfx.setTextColor(EPD_BLACK);
   gfx.setTextSize(1);
-  gfx.setCursor(192, 76);
+  gfx.setCursor(EPD_WIDTH / 2 + 12, 76);
   gfx.print("Set WiFi, timezone.");
 
-  gfx.drawHLine(0, 100, 360, EPD_BLACK);
+  gfx.drawHLine(0, 100, EPD_WIDTH, EPD_BLACK);
 
-  // Bottom hint
+  // Bottom hint — red accent bar (yellow replaced by red on this panel)
   gfx.setTextSize(1);
-
-  // Yellow accent bar at bottom
-  gfx.fillRect(0, 105, 360, 84, EPD_YELLOW);
-  gfx.setTextColor(EPD_BLACK);
+  gfx.fillRect(0, 105, EPD_WIDTH, EPD_HEIGHT - 105, EPD_RED);
+  gfx.setTextColor(EPD_WHITE);
   gfx.setCursor(8, 110);
-  gfx.print("Device will sleep after 15 minutes if not configured.");
+  gfx.print("Device will sleep after 15 min if not configured.");
   gfx.setCursor(8, 125);
   gfx.print("Switch device ON again to re-config.");
   gfx.setCursor(8, 140);
-  gfx.print("After config, device will restart automatically.");
-  gfx.setCursor(8, 155);
-  gfx.print("Access config at http://eink-clock.local on your network.");
-  gfx.setCursor(8, 170);
-  gfx.print("More info: https://github.com/0x1iii1ii/e-ink-mini-clock.");
+  gfx.print("Access config at http://eink-clock.local");
   gfx.display();
 }
 
 void boot_splash() {
   // ── Boot splash ───────────────────────────────────────
   gfx.fillScreen(EPD_WHITE);
-  gfx.fillRect(0, 0, 360, 40, EPD_BLACK);
+  gfx.fillRect(0, 0, EPD_WIDTH, 40, EPD_BLACK);
   gfx.setTextColor(EPD_WHITE);
   gfx.setTextSize(2);
   gfx.setCursor(8, 12);
-  gfx.print("e-Ink Clock  —  ESP8266");
+  gfx.print("e-Ink Clock");
   gfx.setTextColor(EPD_BLACK);
   gfx.setTextSize(2);
   gfx.setCursor(8, 52);
@@ -319,8 +308,8 @@ void boot_splash() {
   gfx.setTextSize(1);
   gfx.setCursor(8, 74);
   gfx.print(cfg.wifi->ssid);
-  gfx.setTextColor(EPD_YELLOW);
+  gfx.setTextColor(EPD_RED);
   gfx.setCursor(8, 90);
-  gfx.print("Waveshare 2.66\" (G)  360x184  4-colour");
+  gfx.print("EPD_266  296x152  3-colour (B/W/R)");
   gfx.display();
 }

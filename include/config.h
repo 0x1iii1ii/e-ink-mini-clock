@@ -35,12 +35,15 @@
 
 // I2C pins for AHT20 and RTC PCF8563T
 #define I2C_SDA   9    // GPIO9
-#define I2C_SCL   3    // GPIO3
+#define I2C_SCL   10    // GPIO3
 
 // e-Paper pins (Waveshare 2.66" G)
 #define TFT_CS  16  // D0
 #define TFT_RST 12  // D6
 #define TFT_DC  15  // D8
+#define B1_PIN  4
+#define B2_PIN  1
+#define BZ_PIN  18
 
 // Screen dimensions and offsets
 #define COL_OFFSET 1

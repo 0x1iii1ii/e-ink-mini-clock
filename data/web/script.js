@@ -352,6 +352,40 @@ if (hnInput && hnCount) {
   updateHnCount();  // init on load
 }
 
+// ── Serial logs ──────────────────────────────────────────
+let logTimer = null;
+const logToggle = document.getElementById("logToggle");
+const logBox = document.getElementById("logBox");
+const logClearBtn = document.getElementById("logClearBtn");
+
+function pollLog() {
+  fetch("/api/log")
+    .then((r) => r.text())
+    .then((txt) => {
+      const atBottom =
+        logBox.scrollTop + logBox.clientHeight >= logBox.scrollHeight - 10;
+      logBox.textContent = txt;
+      if (atBottom) logBox.scrollTop = logBox.scrollHeight;
+    })
+    .catch(() => { });
+}
+
+logToggle.addEventListener("change", () => {
+  const on = logToggle.checked;
+  logBox.style.display = on ? "block" : "none";
+  logClearBtn.style.display = on ? "inline-block" : "none";
+  if (on) {
+    pollLog();
+    logTimer = setInterval(pollLog, 1000);
+  } else {
+    clearInterval(logTimer);
+  }
+});
+
+logClearBtn.addEventListener("click", () => {
+  fetch("/api/log/clear", { method: "POST" }).then(pollLog);
+});
+
 // ── POST /action ──────────────────────────────────────────
 function doAction(action, msg) {
   if (!confirm(msg)) return;
