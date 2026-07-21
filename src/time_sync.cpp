@@ -23,19 +23,19 @@ RTC_DATA_ATTR uint8_t   rtcNvRetryDays = 0;   // days since last failed sync
 
 void rtc_init() {
     // ── RTC (PCF8563) ────────────────────────────────────
-    Serial.print("Init RTC PCF8563... ");
+    Serial0.print("Init RTC PCF8563... ");
     if (!rtc.begin()) {
-        Serial.println("FAILED — check wiring");
+        Serial0.println("FAILED — check wiring");
     }
     else {
-        Serial.println("OK");
+        Serial0.println("OK");
         // Initialise RTC to compile time only if it has lost power
         if (rtc.lostPower()) {
-            Serial.println("RTC lost power — setting compile-time date");
+            Serial0.println("RTC lost power — setting compile-time date");
             rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
         }
         else {
-            Serial.println("RTC battery OK — time preserved");
+            Serial0.println("RTC battery OK — time preserved");
         }
     }
 }
@@ -48,7 +48,7 @@ void restore_rtc() {
     DateTime now = rtc.now();
     // DateTime is valid if year is sane (RTClib returns 2000-01-01 on cold start)
     if (now.year() < 2020) {
-        Serial.println("RTC time not set yet — skipping restore");
+        Serial0.println("RTC time not set yet — skipping restore");
         return;
     }
     // Build a struct tm from the RTClib DateTime
@@ -64,7 +64,7 @@ void restore_rtc() {
     time_t epoch = mktime(&t);
     timeval tv = { epoch, 0 };
     settimeofday(&tv, nullptr);
-    Serial.printf("RTC restore: %04d-%02d-%02d %02d:%02d:%02d\n",
+    Serial0.printf("RTC restore: %04d-%02d-%02d %02d:%02d:%02d\n",
         now.year(), now.month(), now.day(),
         now.hour(), now.minute(), now.second());
 }
@@ -75,7 +75,7 @@ bool getRtcTime(struct tm* timeinfo) {
         return 0;
     }
     if (now.year() < 2020) {
-        Serial.println("RTC time not set yet — returning zero time");
+        Serial0.println("RTC time not set yet — returning zero time");
         memset(timeinfo, 0, sizeof(struct tm));
         return 0;
     }
@@ -92,34 +92,34 @@ bool getRtcTime(struct tm* timeinfo) {
 
 bool sync_time() {
     if (WiFi.status() != WL_CONNECTED) {
-        Serial.println("WiFi not connected — cannot sync time");
+        Serial0.println("WiFi not connected — cannot sync time");
         // restore_rtc();
         return 0;
     }
-    Serial.print("NTP sync...");
+    Serial0.print("NTP sync...");
     configTime(0, 0, "pool.ntp.org", "time.nist.gov");
     // Polls system time until it becomes valid
     time_t now = 0;
     for (int i = 0; i < 80 && now < 1000000000L; i++) {
         delay(100);
         time(&now);
-        Serial.print('.');
+        Serial0.print('.');
     }
 
     if (now > 1000000000L) {
-        Serial.println("Sync OK!");
+        Serial0.println("Sync OK!");
         // Apply UTC offset to get local time
         now = now + (long) cfg.clockCfg.utcOffset * 3600L;
         // Push the synced time into the RTC so it survives a reboot without WiFi.
         rtc.adjust(DateTime((uint32_t) now));
-        Serial.printf("RTC updated to: %04d-%02d-%02d %02d:%02d:%02d\n",
+        Serial0.printf("RTC updated to: %04d-%02d-%02d %02d:%02d:%02d\n",
             rtc.now().year(), rtc.now().month(), rtc.now().day(),
             rtc.now().hour(), rtc.now().minute(), rtc.now().second());
 
         return 1;
     }
     else {
-        Serial.println(" FAILED — keeping RTC time");
+        Serial0.println(" FAILED — keeping RTC time");
         return 0;
         // restore_rtc();
     }
@@ -130,7 +130,7 @@ bool sync_time() {
 // ════════════════════════════════════════════════════════════
 
 void doNtpSync() {
-    Serial.println("NTP: connecting WiFi...");
+    Serial0.println("NTP: connecting WiFi...");
 
     // Brief WiFi connection — timeout 12 s
     WiFi.setHostname(cfg.hostname);
@@ -140,11 +140,11 @@ void doNtpSync() {
     unsigned long t0 = millis();
     while (WiFi.status() != WL_CONNECTED && millis() - t0 < 12000) {
         delay(200);
-        Serial.print('.');
+        Serial0.print('.');
     }
 
     if (WiFi.status() != WL_CONNECTED) {
-        Serial.println("\nNTP: WiFi failed — keeping RTC time, retry in 24 h");
+        Serial0.println("\nNTP: WiFi failed — keeping RTC time, retry in 24 h");
         // restore_rtc();
         rtcNvNtpPending = true;
         // Update last-attempt time so retry fires 24 h from now
@@ -155,16 +155,16 @@ void doNtpSync() {
         return;
     }
 
-    Serial.println("\nNTP: WiFi OK — syncing...");
+    Serial0.println("\nNTP: WiFi OK — syncing...");
     if (sync_time()) {
-        Serial.println("NTP: sync successful");
+        Serial0.println("NTP: sync successful");
         DateTime now = rtc.now();
         rtcNvLastNtpEpoch = (uint32_t) now.unixtime();
         rtcNvNtpPending = false;
         rtcNvRetryDays = 0;
     }
     else {
-        Serial.println("NTP: sync failed — retry in 24 h");
+        Serial0.println("NTP: sync failed — retry in 24 h");
         rtcNvNtpPending = true;
         DateTime d = rtc.now();
         rtcNvLastNtpEpoch = d.unixtime();
@@ -183,7 +183,7 @@ void doNtpSync() {
 bool shouldSyncNtp() {
     // Always sync on very first boot (NVRAM wiped = no epoch stored)
     if (rtcNvLastNtpEpoch == 0) {
-        Serial.println("NTP: first boot — sync needed");
+        Serial0.println("NTP: first boot — sync needed");
         return true;
     }
 
@@ -198,19 +198,19 @@ bool shouldSyncNtp() {
     // In retry mode: try every NTP_RETRY_SEC
     if (rtcNvNtpPending) {
         if (elapsed >= NTP_RETRY_SEC) {
-            Serial.printf("NTP: retry mode, %u h since last attempt — syncing\n", elapsed / 3600);
+            Serial0.printf("NTP: retry mode, %u h since last attempt — syncing\n", elapsed / 3600);
             return true;
         }
-        Serial.printf("NTP: retry mode, only %u h elapsed — skip\n", elapsed / 3600);
+        Serial0.printf("NTP: retry mode, only %u h elapsed — skip\n", elapsed / 3600);
         return false;
     }
 
     // Normal mode: sync every NTP_INTERVAL_SEC (1 week)
     if (elapsed >= NTP_INTERVAL_SEC) {
-        Serial.printf("NTP: %u days since last sync — syncing\n", elapsed / 86400);
+        Serial0.printf("NTP: %u days since last sync — syncing\n", elapsed / 86400);
         return true;
     }
 
-    Serial.printf("NTP: %u h since last sync — skip\n", elapsed / 3600);
+    Serial0.printf("NTP: %u h since last sync — skip\n", elapsed / 3600);
     return false;
 }

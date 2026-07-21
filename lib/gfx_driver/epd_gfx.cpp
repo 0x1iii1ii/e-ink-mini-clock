@@ -87,24 +87,40 @@ void EpdGfx::setCursor(int x, int y) {
   _curY = y;
 }
 
-int EpdGfx::charHeight() { return 8 * _textSize; }
+float EpdGfx::getScaleFactor(uint8_t size) {
+  switch (size) {
+    case 1: return 1.0f;
+    case 2: return 1.5f;
+    case 3: return 2.0f;
+    default: return 1.0f * size;  // Linear scaling for larger sizes
+  }
+}
 
-int EpdGfx::textWidth(const char* str) { return strlen(str) * 6 * _textSize; }
+int EpdGfx::charHeight() { return (int)(8 * getScaleFactor(_textSize)); }
 
-// Draw a single 5x7 character scaled by `size`
+int EpdGfx::textWidth(const char* str) { return (int)(strlen(str) * 6 * getScaleFactor(_textSize)); }
+
+// Draw a single 5x7 character scaled by custom factors
 void EpdGfx::drawChar(int x, int y, char c, UBYTE color, uint8_t size) {
   if (c < 0x20 || c > 0x7E)
     c = '?';
+  float scale = getScaleFactor(size);
   const uint8_t* glyph = font5x7[c - 0x20];
   for (int col = 0; col < 5; col++) {
     uint8_t line = pgm_read_byte(&glyph[col]);
     for (int row = 0; row < 7; row++) {
       if (line & (1 << row)) {
-        if (size == 1) {
+        if (scale <= 1.0f) {
+          // For size 1, just draw pixels (no scaling)
           drawPixel(x + col, y + row, color);
         }
         else {
-          fillRect(x + col * size, y + row * size, size, size, color);
+          // For size > 1, use fillRect with scaled dimensions
+          int scaledX = (int)(x + col * scale);
+          int scaledY = (int)(y + row * scale);
+          int scaledW = (int)(scale + 0.5f);
+          int scaledH = (int)(scale + 0.5f);
+          fillRect(scaledX, scaledY, scaledW, scaledH, color);
         }
       }
     }
@@ -113,12 +129,12 @@ void EpdGfx::drawChar(int x, int y, char c, UBYTE color, uint8_t size) {
 
 void EpdGfx::print(char c) {
   if (c == '\n') {
-    _curY += 8 * _textSize;
+    _curY += charHeight();
     _curX = 0;
     return;
   }
   drawChar(_curX, _curY, c, _textColor, _textSize);
-  _curX += 6 * _textSize;
+  _curX += (int)(6 * getScaleFactor(_textSize));
 }
 
 void EpdGfx::print(const char* str) {
@@ -132,4 +148,15 @@ void EpdGfx::print(int v) { print(String(v)); }
 
 void EpdGfx::print(float v, int decimals) { print(String(v, decimals)); }
 
-void EpdGfx::display() { _epd.display(); }
+void EpdGfx::display() { 
+  _epd.display();  // Non-blocking: just triggers update, returns immediately
+}
+
+void EpdGfx::displayWait() {
+  _epd.display();  // Triggers update
+  _epd.waitForRefresh();  // Then waits for completion
+}
+
+bool EpdGfx::isDisplayBusy() {
+  return _epd.isBusy();  // Non-blocking: just checks BUSY pin
+}

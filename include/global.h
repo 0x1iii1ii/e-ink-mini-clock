@@ -25,6 +25,12 @@ struct wifi_t {
     char password[64] = "";
 };
 
+struct alarm_t {
+    uint8_t hour = 7;               // alarm hour (0-23)
+    uint8_t minute = 0;            // alarm minute (0-59)
+    bool    enabled = false;        // alarm enabled/disabled
+};
+
 struct clock_settings_t {
 
     // clock options
@@ -43,6 +49,9 @@ struct clock_settings_t {
     bool    showTemp = true;
     bool    showRssi = true;
     bool    showBattPct = false;
+    
+    // alarm options
+    alarm_t alarm;                  // alarm settings
 };
 
 struct config_t {
@@ -73,6 +82,11 @@ extern uint8_t g_batteryPct;
 extern bool    g_isVbusConnected;
 extern bool    g_powerSaveMode;
 
+// ===== ALARM STATE =====
+extern bool    g_alarmTriggered;    // alarm just triggered
+extern bool    g_alarmSettingMode;  // in alarm set mode
+extern uint8_t g_alarmEditIdx;      // 0=hour, 1=minute
+
 // ===== SYSTEM STATE =====
 extern time_t lastRefreshEpoch;
 // extern unsigned long lastRefresh;
@@ -82,5 +96,11 @@ extern time_t lastRefreshEpoch;
 void webLog(const String& msg);
 void webLogf(const char* fmt, ...);
 uint32_t effectiveRefreshSec();
+
+// ===== ALARM FUNCTIONS =====
+void checkAlarm();                  // Check if alarm should trigger
+void handleAlarmButton();           // Button handler for alarm setting
+void startAlarmMode();              // Enter alarm setting mode
+void exitAlarmMode();               // Exit alarm setting mode
 
 // ===== Sleep Schedule =====

@@ -12,11 +12,16 @@
 #include "epd_gfx.h"
 #include "clock_digit.h"
 
+enum SetupModeType {
+    SETUP_FACTORY = 0,
+    SETUP_USER,
+};
+
 bool epd_init();
 void drawBattery(int x, int y, uint8_t pct, bool charging = false);
 void drawWifiBars(int x, int y, int rssi);
 void drawDisplay();
-void showSetupScreen();
+void showSetupScreen(uint8_t mode);
 void boot_splash();
 
 #endif //DISPLAY_H

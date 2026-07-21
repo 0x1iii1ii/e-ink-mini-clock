@@ -61,7 +61,7 @@
 
 // ADC pins for battery monitoring
 #define BATTRY_ADC  0    // GPIO2, ADC channel — voltage divider (100k/100k) 
-#define USER_BUTTON 8    // GPIO8, digital input — User button
-#define VBUS_PIN    10    // GPIO0, digital input — USB charger connected
+// #define USER_BUTTON 4    // GPIO8, digital input — User button
+#define VBUS_PIN    3    // GPIO0, digital input — USB charger connected
 
 #endif //CONFIG_MGR_H

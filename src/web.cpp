@@ -58,7 +58,7 @@ bool handleFileRead(String path) {
     }
   }
 
-  Serial.println("Resource not found: " + path);
+  Serial0.println("Resource not found: " + path);
   return false;
 }
 
@@ -97,7 +97,10 @@ void handleConfig() {
   json += "\"showBattPct\":" + String(cfg.clockCfg.showBattPct ? "true" : "false") + ",";
   json += "\"showHum\":" + String(cfg.clockCfg.showHum ? "true" : "false") + ",";
   json += "\"showTemp\":" + String(cfg.clockCfg.showTemp ? "true" : "false") + ",";
-  json += "\"showRSSI\":" + String(cfg.clockCfg.showRssi ? "true" : "false") + "";
+  json += "\"showRSSI\":" + String(cfg.clockCfg.showRssi ? "true" : "false") + ",";
+  json += "\"alarmHour\":" + String(cfg.clockCfg.alarm.hour) + ",";
+  json += "\"alarmMinute\":" + String(cfg.clockCfg.alarm.minute) + ",";
+  json += "\"alarmEnabled\":" + String(cfg.clockCfg.alarm.enabled ? "true" : "false") + "";
   json += "}";
   server.send(200, "application/json", json);
 }
@@ -125,7 +128,7 @@ void handleOtaUrl() {
   switch (ret) {
   case HTTP_UPDATE_OK:     ESP.restart(); break;
   case HTTP_UPDATE_FAILED:
-    Serial.printf("OTA URL failed: %s\n", httpUpdate.getLastErrorString().c_str());
+    Serial0.printf("OTA URL failed: %s\n", httpUpdate.getLastErrorString().c_str());
     break;
   default: break;
   }
@@ -145,7 +148,7 @@ void doVersionFetch() {
   int code = https.GET();
   if (code == 200) {
     _updatePayload = https.getString();
-    Serial.println("Fetched version info: " + _updatePayload);
+    Serial0.println("Fetched version info: " + _updatePayload);
   }
   else {
     _updatePayload = "{\"ok\":false,\"msg\":\"Fetch failed\"}";
@@ -182,7 +185,7 @@ void handleStatus() {
 
   struct tm t;
   if (!getRtcTime(&t)) {
-    Serial.println("RTC read failed");
+    Serial0.println("RTC read failed");
     return;
   }
 
@@ -277,6 +280,12 @@ void handleSaveClock() {
   if (server.hasArg("quietEnd"))
     cfg.clockCfg.quietEnd = (uint8_t) constrain(server.arg("quietEnd").toInt(), 0, 23);
 
+  // Alarm settings
+  if (server.hasArg("alarmHour"))
+    cfg.clockCfg.alarm.hour = (uint8_t) constrain(server.arg("alarmHour").toInt(), 0, 23);
+  if (server.hasArg("alarmMinute"))
+    cfg.clockCfg.alarm.minute = (uint8_t) constrain(server.arg("alarmMinute").toInt(), 0, 59);
+
   // check boxes
   cfg.clockCfg.hour12 = server.hasArg("hour12");
   cfg.clockCfg.quietEnabled = server.hasArg("quietEnabled");
@@ -285,6 +294,7 @@ void handleSaveClock() {
   cfg.clockCfg.showHum = server.hasArg("showHum");
   cfg.clockCfg.showTemp = server.hasArg("showTemp");
   cfg.clockCfg.showRssi = server.hasArg("showRSSI");
+  cfg.clockCfg.alarm.enabled = server.hasArg("alarmEnabled");
 
   save_config();
   server.send(200, "application/json", "{\"ok\":true}");
@@ -376,7 +386,7 @@ void web_init() {
   _bootMs = millis();
 
   if (!LittleFS.begin()) {
-    Serial.println("LittleFS mount failed");
+    Serial0.println("LittleFS mount failed");
     return;
   }
 
@@ -412,7 +422,7 @@ void web_init() {
   server.onNotFound(handleNotFound);
 
   server.begin();
-  Serial.println("Web server ready on port 80");
+  Serial0.println("Web server ready on port 80");
 }
 
 // ── web_loop ───────────────────────────────────────────────
@@ -426,5 +436,5 @@ void web_loop() {
 
 void startWiFiPortal() {
   WiFi.softAP(AP_SSID, AP_PASS);
-  Serial.println("AP IP: " + WiFi.softAPIP().toString());
+  Serial0.println("AP IP: " + WiFi.softAPIP().toString());
 }

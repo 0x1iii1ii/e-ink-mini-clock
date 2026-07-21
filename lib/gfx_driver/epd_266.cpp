@@ -18,7 +18,7 @@ void EPD_266::clear() {
 
 void EPD_266::display() {
     writeRAM(bufferBW, bufferR);
-    update();
+    update();  // Non-blocking: just triggers, doesn't wait
 }
 
 void EPD_266::sleep() {
@@ -28,9 +28,20 @@ void EPD_266::sleep() {
 }
 
 void EPD_266::update() {
+    // Non-blocking: only initiates refresh
     writeCmd(0x22);
     writeData(0xF4);
     writeCmd(0x20);
+    // Don't wait here anymore — caller should check isBusy() or call waitForRefresh()
+}
+
+bool EPD_266::isBusy() {
+    // Non-blocking check: returns true if display is still busy
+    return checkBusy();
+}
+
+void EPD_266::waitForRefresh() {
+    // Blocking wait: use this only when you need to wait for display
     waitBusy();
 }
 
@@ -143,8 +154,16 @@ void EPD_266::writeData(uint8_t d) {
     spiWrite(d);
 }
 
+bool EPD_266::checkBusy() {
+    // Non-blocking: just reads the BUSY pin (HIGH = busy, LOW = ready)
+    return (digitalRead(EPD_BUSY) == HIGH);
+}
+
 void EPD_266::waitBusy() {
-    while (digitalRead(EPD_BUSY)) delay(1);
+    // Blocking wait for display to finish
+    while (checkBusy()) {
+        delay(1);
+    }
 }
 
 void EPD_266::reset() {

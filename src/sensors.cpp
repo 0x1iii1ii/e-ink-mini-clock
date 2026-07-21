@@ -26,12 +26,12 @@ float   g_humidity = 0.0f;
 
 void aht20_init() {
     // ── AHT20 ────────────────────────────────────────────
-    Serial.print("Init AHT20... ");
+    Serial0.print("Init AHT20... ");
     if (!aht20.begin()) {
-        Serial.println("FAILED");
+        Serial0.println("FAILED");
         return;
     }
-    Serial.println("OK");
+    Serial0.println("OK");
     aht20_read();
 }
 

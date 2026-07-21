@@ -45,9 +45,11 @@ public:
     void clear();
 
     // ===== REFRESH MODES =====
-    void display();
+    void display();                    // Non-blocking: write RAM + start refresh
     void sleep();
-    void update();
+    void update();                     // Non-blocking: start refresh
+    bool isBusy();                     // Non-blocking: check if display is busy
+    void waitForRefresh();             // Blocking: wait for refresh to complete
 
     // ===== DRAW API =====
     void drawPixel(int x, int y, epd_layer_t layer, uint8_t color);
@@ -65,7 +67,8 @@ private:
     void spiWrite(uint8_t d);
     void writeCmd(uint8_t c);
     void writeData(uint8_t d);
-    void waitBusy();
+    bool checkBusy();                  // Non-blocking: just reads BUSY pin
+    void waitBusy();                   // Blocking: waits for BUSY to go LOW
     void reset();
     void initPanel();
     void writeRAM(uint8_t* bw, uint8_t* r);

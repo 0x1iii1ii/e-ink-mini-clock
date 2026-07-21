@@ -42,7 +42,7 @@ public:
 
     // ── Text ──────────────────────────────────────────────
     void setTextColor(UBYTE color);
-    void setTextSize(uint8_t size);     // 1 = 6x8, 2 = 12x16, etc.
+    void setTextSize(uint8_t size);     // 1=6x8, 2=9x12, 3=12x16
     void setCursor(int x, int y);
     void print(const char* str);
     void print(const String& s);
@@ -55,7 +55,9 @@ public:
     int  charHeight();
 
     // ── Push framebuffer to display ───────────────────────
-    void display();
+    void display();                     // Non-blocking: update and return immediately
+    void displayWait();                 // Blocking: update and wait for completion
+    bool isDisplayBusy();               // Non-blocking: check if display is refreshing
 
 private:
     EPD_266& _epd;
@@ -64,6 +66,7 @@ private:
     int     _curX, _curY;
 
     void drawChar(int x, int y, char c, UBYTE color, uint8_t size);
+    float getScaleFactor(uint8_t size);  // Returns: 1.0 for size 1, 1.5 for size 2, 2.0 for size 3
 };
 
 #endif

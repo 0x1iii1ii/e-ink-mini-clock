@@ -18,10 +18,10 @@ const char* months[] = { "JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG",
 
 bool epd_init() {
   // ── e-Paper ──────────────────────────────────────────
-  Serial.println("Init e-paper...");
+  Serial0.println("Init e-paper...");
   epd.begin();
   epd.setRotation(ROT_180);
-  Serial.println("e-Paper OK.");
+  Serial0.println("e-Paper OK.");
   return true;
 }
 
@@ -44,15 +44,15 @@ String zp(int v) { return (v < 10 ? "0" : "") + String(v); }
 
 void drawBattery(int x, int y, uint8_t pct, bool charging) {
   // ── Outer body ───────────────────────────────────────────
-  gfx.drawRect(x, y, 25, 16, EPD_BLACK);
+  gfx.drawRect(x, y, 25, 14, EPD_BLACK);
   // ── Nub (positive terminal) ──────────────────────────────
-  gfx.fillRect(x + 25, y + 4, 3, 8, EPD_BLACK);
+  gfx.fillRect(x + 25, y + 4, 3, 6, EPD_BLACK);
 
   // ── Charge fill ──────────────────────────────────────────
   uint8_t fillW = (uint8_t) (pct * 23 / 100);
   UBYTE   col = (pct > 50) ? EPD_BLACK : EPD_RED;
   if (fillW > 0)
-    gfx.fillRect(x + 1, y + 1, fillW, 14, col);
+    gfx.fillRect(x + 1, y + 1, fillW, 12, col);
 
   // ── Charging bolt overlay ─────────────────────────────────
   if (charging) {
@@ -83,9 +83,9 @@ void drawWifiBars(int x, int y, int rssi) {
   else if (rssi > -77) bars = 2;
   else if (rssi > -88) bars = 1;
   for (int i = 0; i < 4; i++) {
-    int bh = 4 + i * 4;
+    int bh = 2 + i * 4;
     int bx = x + i * 7;
-    int by = y + 20 - bh;
+    int by = y + 18 - bh;
     if (i < bars) gfx.fillRect(bx, by, 6, bh, EPD_BLACK);
     else          gfx.drawRect(bx, by, 6, bh, EPD_BLACK);
   }
@@ -96,14 +96,14 @@ void drawWifiBars(int x, int y, int rssi) {
 // ════════════════════════════════════════════════════════════
 void drawDisplay() {
   struct tm t;
-  if (!getLocalTime(&t)) {
-    Serial.println("Failed to obtain time");
-    return;
-  }
-  // if (!getRtcTime(&t)) {
-  //   Serial.println("[Display] RTC read failed");
+  // if (!getLocalTime(&t)) {
+  //   Serial0.println("Failed to obtain time");
   //   return;
   // }
+  if (!getRtcTime(&t)) {
+    Serial0.println("[Display] RTC read failed");
+    return;
+  }
 
   // ── Time processing ──────────────────────────────────
   int hr = t.tm_hour;
@@ -119,15 +119,15 @@ void drawDisplay() {
     months[t.tm_mon] + "-" +
     String(1900 + t.tm_year);
 
-  Serial.println("filling white");
+  Serial0.println("filling white");
   gfx.fillScreen(EPD_WHITE);
 
   // ── Constants (296 x 152 EPD_266 panel) ───────────────
   const int SCREEN_W2 = EPD_WIDTH;
-  const int TOP_Y = 3;
+  const int TOP_Y = 1;
   const int BOTTOM_Y = EPD_HEIGHT - 9;
-  const int ITEM_SPACING = 6;
-  const int TEXT_SIZE = 1;
+  const int ITEM_SPACING = 2;
+  const int TEXT_SIZE = 2;
 
   // Approximate pixel widths at textSize 2 (6px per char * 2 = 12px/char)
   const int BATT_ICON_W = 30;   // battery icon
@@ -185,6 +185,30 @@ void drawDisplay() {
     gfx.print("C");
   }
 
+  // ── ALARM STATUS ─────────────────────────────────────
+  // Show alarm time in top-left area if enabled or in setting mode
+  if (g_alarmSettingMode || cfg.clockCfg.alarm.enabled) {
+    gfx.setTextColor(EPD_RED);
+    gfx.setTextSize(1);
+    String alarmStr = "ALM ";
+    alarmStr += (cfg.clockCfg.alarm.hour < 10 ? "0" : "") + String(cfg.clockCfg.alarm.hour);
+    alarmStr += ":";
+    alarmStr += (cfg.clockCfg.alarm.minute < 10 ? "0" : "") + String(cfg.clockCfg.alarm.minute);
+
+    if (g_alarmSettingMode) {
+      // Show editing indicator
+      if (g_alarmEditIdx == 0) {
+        alarmStr = "ALM [" + (String) (cfg.clockCfg.alarm.hour < 10 ? "0" : "") + String(cfg.clockCfg.alarm.hour) + "] : " + (String) (cfg.clockCfg.alarm.minute < 10 ? "0" : "") + String(cfg.clockCfg.alarm.minute);
+      }
+      else {
+        alarmStr = "ALM " + (String) (cfg.clockCfg.alarm.hour < 10 ? "0" : "") + String(cfg.clockCfg.alarm.hour) + " : [" + (String) (cfg.clockCfg.alarm.minute < 10 ? "0" : "") + String(cfg.clockCfg.alarm.minute) + "]";
+      }
+    }
+
+    gfx.setCursor(SCREEN_W2 - 80, TOP_Y);
+    gfx.print(alarmStr);
+  }
+
   // ── DIVIDERS ─────────────────────────────────────────
   gfx.drawHLine(0, LINE_TOP_BAR, SCREEN_W2, EPD_BLACK);
   gfx.drawHLine(0, LINE_BOTTOM_BAR, SCREEN_W2, EPD_BLACK);
@@ -232,12 +256,12 @@ void drawDisplay() {
   gfx.print(rightStr);
   gfx.display();
 
-  Serial.println("[Display] Updated — " + dateStr +
+  Serial0.println("[Display] Updated — " + dateStr +
     " " + zp(hr) + ":" + zp(min) +
     (cfg.clockCfg.hour12 ? (pm ? " PM" : " AM") : ""));
 }
 
-void showSetupScreen() {
+void showSetupScreen(uint8_t mode) {
   gfx.fillScreen(EPD_WHITE);
 
   // Red title bar
@@ -245,7 +269,7 @@ void showSetupScreen() {
   gfx.setTextColor(EPD_WHITE);
   gfx.setTextSize(2);
   gfx.setCursor(8, 9);
-  gfx.print("E-Ink Mini Clock - SETUP MODE");
+  gfx.print(" E-Ink Mini Clock - SETUP MODE");
 
   gfx.drawHLine(0, 34, EPD_WIDTH, EPD_BLACK);
 
@@ -285,9 +309,17 @@ void showSetupScreen() {
   gfx.fillRect(0, 105, EPD_WIDTH, EPD_HEIGHT - 105, EPD_RED);
   gfx.setTextColor(EPD_WHITE);
   gfx.setCursor(8, 110);
-  gfx.print("Device will sleep after 15 min if not configured.");
-  gfx.setCursor(8, 125);
-  gfx.print("Switch device ON again to re-config.");
+  gfx.print("Device will sleep after 15 min not configured.");
+  switch (mode) {
+  case SETUP_FACTORY:
+    gfx.setCursor(8, 125);
+    gfx.print("Switch device ON/OFF again to re-config.");
+    break;
+  case SETUP_USER:
+    gfx.setCursor(8, 125);
+    gfx.print("Hold 2 buttons 2s and switch ON to re-config.");
+    break;
+  }
   gfx.setCursor(8, 140);
   gfx.print("Access config at http://eink-clock.local");
   gfx.display();

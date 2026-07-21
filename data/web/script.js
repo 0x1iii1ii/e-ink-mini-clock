@@ -117,6 +117,9 @@ fetch("/config")
     setCheck('showHum', d.showHum);
     setCheck('showTemp', d.showTemp);
     setCheck('showRSSI', d.showRSSI);
+    setVal('alarmHour', d.alarmHour);
+    setVal('alarmMinute', d.alarmMinute);
+    setCheck('alarmEnabled', d.alarmEnabled);
     setVal('ssid', d.ssid);
     setText('hostNameSide', d.hostname);
     setText('currentHostname', d.hostname);
@@ -359,6 +362,7 @@ const logBox = document.getElementById("logBox");
 const logClearBtn = document.getElementById("logClearBtn");
 
 function pollLog() {
+  if (!logBox) return;
   fetch("/api/log")
     .then((r) => r.text())
     .then((txt) => {
@@ -370,21 +374,25 @@ function pollLog() {
     .catch(() => { });
 }
 
-logToggle.addEventListener("change", () => {
-  const on = logToggle.checked;
-  logBox.style.display = on ? "block" : "none";
-  logClearBtn.style.display = on ? "inline-block" : "none";
-  if (on) {
-    pollLog();
-    logTimer = setInterval(pollLog, 1000);
-  } else {
-    clearInterval(logTimer);
-  }
-});
+if (logToggle) {
+  logToggle.addEventListener("change", () => {
+    const on = logToggle.checked;
+    if (logBox) logBox.style.display = on ? "block" : "none";
+    if (logClearBtn) logClearBtn.style.display = on ? "inline-block" : "none";
+    if (on) {
+      pollLog();
+      logTimer = setInterval(pollLog, 1000);
+    } else {
+      clearInterval(logTimer);
+    }
+  });
+}
 
-logClearBtn.addEventListener("click", () => {
-  fetch("/api/log/clear", { method: "POST" }).then(pollLog);
-});
+if (logClearBtn) {
+  logClearBtn.addEventListener("click", () => {
+    fetch("/api/log/clear", { method: "POST" }).then(pollLog);
+  });
+}
 
 // ── POST /action ──────────────────────────────────────────
 function doAction(action, msg) {

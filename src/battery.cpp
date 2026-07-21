@@ -20,12 +20,12 @@ uint8_t readBattery() {
         delay(2);
     }
     raw_mv /= 16;
-    // Serial.printf("Raw ADC: %ld mV\n", raw_mv);
-    // Serial.printf("ADC pin voltage: %ld mV\n", raw_mv);       // should be ~1650 mV
-    // Serial.printf("After ratio x2: %.2f V\n", raw_mv / 1000.0f * DIV_RATIO);
+    // Serial0.printf("Raw ADC: %ld mV\n", raw_mv);
+    // Serial0.printf("ADC pin voltage: %ld mV\n", raw_mv);       // should be ~1650 mV
+    // Serial0.printf("After ratio x2: %.2f V\n", raw_mv / 1000.0f * DIV_RATIO);
     // Scale back up through the voltage divider
     float v_batt = (raw_mv / 1000.0f) * DIV_RATIO;
-    Serial.printf("Voltage: %.2f V\n", v_batt);
+    Serial0.printf("Voltage: %.2f V\n", v_batt);
 
     // Clamp
     if (v_batt < 3.0f) v_batt = 3.0f;
