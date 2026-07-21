@@ -6,6 +6,30 @@
 #include "system.h"
 #include "battery.h"
 
+#include <esp_system.h>
+
+esp_reset_reason_t getResetReason() {
+    esp_reset_reason_t reason = esp_reset_reason();
+
+    Serial0.print("Reset reason: ");
+
+    switch (reason) {
+    case ESP_RST_UNKNOWN:    Serial0.println("Unknown"); break;
+    case ESP_RST_POWERON:    Serial0.println("Power-on"); break;
+    case ESP_RST_EXT:        Serial0.println("External reset"); break;
+    case ESP_RST_SW:         Serial0.println("Software reset (ESP.restart())"); break;
+    case ESP_RST_PANIC:      Serial0.println("Exception/Panic"); break;
+    case ESP_RST_INT_WDT:    Serial0.println("Interrupt Watchdog"); break;
+    case ESP_RST_TASK_WDT:   Serial0.println("Task Watchdog"); break;
+    case ESP_RST_WDT:        Serial0.println("Other Watchdog"); break;
+    case ESP_RST_DEEPSLEEP:  Serial0.println("Wake from Deep Sleep"); break;
+    case ESP_RST_BROWNOUT:   Serial0.println("Brownout"); break;
+    case ESP_RST_SDIO:       Serial0.println("SDIO reset"); break;
+    default:                 Serial0.printf("Other (%d)\n", reason); break;
+    }
+    return reason;
+}
+
 /*
 - During normal operation: sleep refreshMin.
 - When the device enters quiet hours from a timer wakeup: sleep until quietEnd.
@@ -61,8 +85,8 @@ void goToDeepSleep() {
         g_powerSaveMode = false;
         return;
     }
-    WiFi.disconnect(true);
-    WiFi.mode(WIFI_OFF);
+    // WiFi.disconnect(true);
+    // WiFi.mode(WIFI_OFF);
     uint32_t sleepSec = effectiveRefreshSec();
     uint64_t sleepUs = (uint64_t) sleepSec * 1000000ULL;
     if (isInQuietHours() && sleepSec > (cfg.clockCfg.refreshMin * 60UL)) {
@@ -80,9 +104,9 @@ void goToDeepSleep() {
     Wire.end();
     // Wake on timer
     esp_sleep_enable_timer_wakeup(sleepUs);
-    // Wake on user button press or plugging in power
-    esp_sleep_enable_gpio_wakeup();
-    gpio_wakeup_enable((gpio_num_t) VBUS_PIN, GPIO_INTR_HIGH_LEVEL);
+    Serial0.printf("B1=%d B2=%d\n",
+        digitalRead(B1_PIN),
+        digitalRead(B2_PIN));
     esp_deep_sleep_start();
 }
 
@@ -103,8 +127,11 @@ void enterPortalMode(bool factory, bool user) {
         user ? showSetupScreen(SETUP_USER) : showSetupScreen(SETUP_FACTORY);
     }
     Serial0.println("Starting web server...");
-    if (!factory) {
-        wifi_init();
+    if (!factory && rtcNvBootCount != 1) {
+        if (!wifi_init()) {
+            Serial0.println("WiFi init failed — starting portal in AP mode");
+            startWiFiPortal();
+        }
     }
     web_init();
 
@@ -142,6 +169,8 @@ uint32_t effectiveRefreshSec() {
         return base;
 
     esp_sleep_wakeup_cause_t cause = esp_sleep_get_wakeup_cause();
+
+    Serial0.printf("Quiet hours active, wakeup cause: %d\n", cause);
 
     switch (cause) {
     case ESP_SLEEP_WAKEUP_TIMER:

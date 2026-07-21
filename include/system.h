@@ -12,3 +12,5 @@
 
 void enterPortalMode(bool factory = false, bool user = false);
 void goToDeepSleep();
+esp_reset_reason_t getResetReason();
+

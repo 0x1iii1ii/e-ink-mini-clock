@@ -170,9 +170,11 @@ void doNtpSync() {
         rtcNvLastNtpEpoch = d.unixtime();
     }
 
-    // Kill WiFi immediately to save power
-    WiFi.disconnect(true);
-    WiFi.mode(WIFI_OFF);
+    if (rtcNvBootCount != 1) {
+        // Kill WiFi immediately to save power
+        WiFi.disconnect(true);
+        WiFi.mode(WIFI_OFF);
+    }
     delay(100);
 }
 

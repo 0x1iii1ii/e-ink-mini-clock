@@ -57,7 +57,12 @@
 #include "battery.h"
 #include "button.h"
 #include "system.h"
+#include "NimBLEDevice.h"
  // #include "WebSerial.h"
+
+#define SERVICE_UUID     "6e400001-b5a3-f393-e0a9-e50e24dcca9e"
+#define CHAR_CONFIG_UUID "6e400002-b5a3-f393-e0a9-e50e24dcca9e"
+#define CHAR_STATUS_UUID "6e400005-b5a3-f393-e0a9-e50e24dcca9e"
 
 unsigned long lastRefresh = 0;
 unsigned long lastSensorRead = 0;
@@ -72,8 +77,66 @@ bool    g_alarmSettingMode = false;  // in alarm set mode
 uint8_t g_alarmEditIdx = 0;          // 0=hour, 1=minute
 unsigned long g_alarmLastTrigger = 0; // timestamp of last alarm trigger (prevent re-trigger)
 
+// esp_sleep_wakeup_cause_t wakeUpCause = ESP_SLEEP_WAKEUP_UNDEFINED;
+
 bool lastB1 = HIGH;
 bool lastB2 = HIGH;
+
+NimBLECharacteristic* statusChar;
+String pendingSsid, pendingPass;
+volatile bool connectRequested = false;
+
+void setStatus(const String& state, const String& ip = "") {
+  StaticJsonDocument<512> doc;
+  doc["state"] = state;
+  if (ip.length()) doc["ip"] = ip;
+  String out;
+  serializeJson(doc, out);
+  statusChar->setValue(out.c_str());
+  statusChar->notify();
+}
+
+class ConfigCB : public NimBLECharacteristicCallbacks {
+  void onWrite(NimBLECharacteristic* c, NimBLEConnInfo& connInfo) override {
+    StaticJsonDocument<512> doc;
+    if (deserializeJson(doc, c->getValue().c_str())) {
+      setStatus("bad_json");
+      return;
+    }
+    String ssid = doc["ssid"] | "";
+    String pass = doc["pass"] | "";
+    String cmd = doc["cmd"] | "";
+    if (ssid.length()) pendingSsid = ssid;
+    if (pass.length()) pendingPass = pass;
+    if (cmd == "connect") connectRequested = true;
+  }
+};
+class ServerCB : public NimBLEServerCallbacks {
+  void onDisconnect(NimBLEServer* server, NimBLEConnInfo& connInfo, int reason) override {
+    NimBLEDevice::getAdvertising()->start(); // resume advertising after disconnect
+  }
+};
+
+void bleConfigBegin(const char* deviceName) {
+  NimBLEDevice::init(deviceName);
+  NimBLEDevice::setMTU(247); // negotiated with the client, not guaranteed — see loop() note
+  NimBLEServer* server = NimBLEDevice::createServer();
+  server->setCallbacks(new ServerCB());
+
+  NimBLEService* svc = server->createService(SERVICE_UUID);
+
+  svc->createCharacteristic(CHAR_CONFIG_UUID, NIMBLE_PROPERTY::WRITE)
+    ->setCallbacks(new ConfigCB());
+
+  statusChar = svc->createCharacteristic(
+    CHAR_STATUS_UUID, NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY);
+  setStatus("idle");
+
+  NimBLEAdvertising* adv = NimBLEDevice::getAdvertising();
+  adv->addServiceUUID(SERVICE_UUID);
+  adv->enableScanResponse(true);
+  adv->start();
+}
 
 void beep(int freq, int duration) {
   tone(BZ_PIN, freq);
@@ -182,6 +245,14 @@ void handleAlarmButton() {
   }
 }
 
+void startUpSound() {
+  beep(1200, 80);
+  delay(30);
+  beep(1800, 80);
+  delay(30);
+  beep(2400, 120);
+}
+
 // EPD_266 epd2;
 // ════════════════════════════════════════════════════════════
 //  Setup
@@ -200,7 +271,7 @@ void setup() {
   Serial0.printf("Firmware version: %s\n", FW_VERSION);
   Serial0.printf("build: %s %s\n", __DATE__, __TIME__);
   Serial0.printf("\n=== ePaper Clock  wake #%u ===\n", rtcNvBootCount);
-
+  Serial0.printf("Wakeup cause: %d\n", esp_sleep_get_wakeup_cause());
   // ── I2C initialization ────────────────────────────────
   Wire.begin(I2C_SDA, I2C_SCL);
   Wire.setClock(400000);
@@ -231,12 +302,21 @@ void setup() {
   pinMode(B1_PIN, INPUT);
   pinMode(B2_PIN, INPUT);
   pinMode(BZ_PIN, OUTPUT);
+  bleConfigBegin("Eink-Clock Setup BLE");
+  // Wake on user button press or plugging in power
+  esp_deep_sleep_enable_gpio_wakeup(
+    (1ULL << B1_PIN) | (1ULL << B2_PIN),
+    ESP_GPIO_WAKEUP_GPIO_LOW
+  );
+
+  // esp_sleep_enable_gpio_wakeup();
+
   delay(100);
-  beep(1200, 80);
-  delay(30);
-  beep(1800, 80);
-  delay(30);
-  beep(2400, 120);
+
+  if (getResetReason() != ESP_RST_DEEPSLEEP) {
+    startUpSound();
+  }
+
   // ── GPIO (charger / VBUS sense) ──────────────────────
   // pinMode(USER_BUTTON, INPUT);
   pinMode(VBUS_PIN, INPUT);
@@ -291,8 +371,21 @@ void setup() {
       enterPortalMode();   // blocks for 60 s then sleeps
     }
     else {
-      Serial0.println("going to sleep");
-      goToDeepSleep();
+      switch (esp_sleep_get_wakeup_cause()) {
+      case ESP_SLEEP_WAKEUP_TIMER:
+        Serial0.println("Wakeup cause: Timer");
+        Serial0.println("going to sleep");
+        goToDeepSleep();
+        break;
+      case ESP_SLEEP_WAKEUP_GPIO:
+        Serial0.println("Wakeup cause: GPIO");
+        enterPortalMode();   // blocks for 60 s then sleeps
+        break;
+      default:
+        Serial0.println("going to sleep");
+        goToDeepSleep();
+        break;
+      }
     }
     // // ── Go back to sleep ─────────────────────────────────
     // goToDeepSleep();
@@ -313,6 +406,27 @@ void setup() {
 //  Loop
 // ════════════════════════════════════════════════════════════
 void loop() {
+
+  // if (connectRequested) {
+  //   connectRequested = false;
+  //   setStatus("connecting");
+  //   WiFi.begin(pendingSsid.c_str(), pendingPass.c_str());
+
+  //   uint32_t start = millis();
+  //   while (WiFi.status() != WL_CONNECTED && millis() - start < 15000) {
+  //     delay(250);
+  //   }
+
+  //   if (WiFi.status() == WL_CONNECTED) {
+  //     setStatus(("connected:" + WiFi.localIP().toString()).c_str());
+  //     // TODO: persist pendingSsid/pendingPass via Preferences, same as the web portal path
+  //   }
+  //   else {
+  //     setStatus("failed");
+  //   }
+  // }
+
+
   bool b1 = digitalRead(B1_PIN);
   bool b2 = digitalRead(B2_PIN);
 

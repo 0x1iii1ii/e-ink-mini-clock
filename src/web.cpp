@@ -117,21 +117,55 @@ void handleOtaUrl() {
   }
   server.send(200, "application/json", "{\"ok\":true,\"msg\":\"Starting OTA from URL...\"}");
 
-  // Use HTTPUpdate
-  WiFiClientSecure client;
-  client.setInsecure();   // or set a CA cert for production
-
   // Follow redirects manually
   httpUpdate.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
 
-  t_httpUpdate_return ret = httpUpdate.update(client, url);
-  switch (ret) {
-  case HTTP_UPDATE_OK:     ESP.restart(); break;
-  case HTTP_UPDATE_FAILED:
-    Serial0.printf("OTA URL failed: %s\n", httpUpdate.getLastErrorString().c_str());
-    break;
-  default: break;
+  t_httpUpdate_return ret;
+
+  if (url.startsWith("https://")) {
+    Serial0.println("Using HTTPS OTA");
+    WiFiClientSecure client;
+    client.setInsecure();
+    ret = httpUpdate.update(client, url);
   }
+  else if (url.startsWith("http://")) {
+    Serial0.println("Using HTTP OTA");
+    WiFiClient client;
+    ret = httpUpdate.update(client, url);
+  }
+  else {
+    Serial0.println("Invalid URL scheme");
+    return;
+  }
+
+  switch (ret) {
+  case HTTP_UPDATE_OK:
+    Serial0.println("OTA Success");
+    ESP.restart();
+    break;
+
+  case HTTP_UPDATE_FAILED:
+    Serial0.printf("OTA failed: %s\n",
+      httpUpdate.getLastErrorString().c_str());
+    break;
+
+  case HTTP_UPDATE_NO_UPDATES:
+    Serial0.println("No update available");
+    break;
+  }
+
+  // // Use HTTPUpdate
+  // WiFiClientSecure client;
+  // client.setInsecure();   // or set a CA cert for production
+
+  // t_httpUpdate_return ret = httpUpdate.update(client, url);
+  // switch (ret) {
+  // case HTTP_UPDATE_OK:     ESP.restart(); break;
+  // case HTTP_UPDATE_FAILED:
+  //   Serial0.printf("OTA URL failed: %s\n", httpUpdate.getLastErrorString().c_str());
+  //   break;
+  // default: break;
+  // }
 }
 
 static String   _updatePayload = "";
