@@ -174,6 +174,7 @@ uint32_t effectiveRefreshSec() {
 
     switch (cause) {
     case ESP_SLEEP_WAKEUP_TIMER:
+    case ESP_SLEEP_WAKEUP_GPIO:
     {
         uint32_t quietSleep = secondsUntilQuietEnd();
 
@@ -184,7 +185,6 @@ uint32_t effectiveRefreshSec() {
         return base;
     }
 
-    case ESP_SLEEP_WAKEUP_GPIO:
     case ESP_SLEEP_WAKEUP_EXT0:
     case ESP_SLEEP_WAKEUP_EXT1:
         return base;

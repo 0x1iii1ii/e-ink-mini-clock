@@ -469,6 +469,9 @@ void web_loop() {
 // ── AP / captive portal (setup mode) ──────────────────────
 
 void startWiFiPortal() {
+  WiFi.mode(WIFI_OFF);
+  delay(1000);
+  WiFi.mode(WIFI_AP);
   WiFi.softAP(AP_SSID, AP_PASS);
   Serial0.println("AP IP: " + WiFi.softAPIP().toString());
 }

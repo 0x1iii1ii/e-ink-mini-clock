@@ -38,13 +38,13 @@ void load_config() {
         return;
     }
 
-    Serial0.println("Raw file content:");
-    while (f.available()) {
-        Serial0.write(f.read());
-    }
-    Serial0.println("\n--- end of file ---");
+    // Serial0.println("Raw file content:");
+    // while (f.available()) {
+    //     Serial0.write(f.read());
+    // }
+    // Serial0.println("\n--- end of file ---");
     // Rewind file for parsing
-    f.seek(0);
+    // f.seek(0);
 
     StaticJsonDocument<1024> doc;
     DeserializationError err = deserializeJson(doc, f);
@@ -82,39 +82,7 @@ void load_config() {
     cfg.clockCfg.alarm.hour = doc["alarmHour"] | 7;
     cfg.clockCfg.alarm.minute = doc["alarmMinute"] | 0;
     cfg.clockCfg.alarm.enabled = doc["alarmEnabled"] | false;
-
-    // --- Print final cfg struct ---
-    Serial0.println("Final cfg values:");
-    Serial0.printf("ssid: %s\n", cfg.wifi->ssid);
-    Serial0.printf("password: %s\n", cfg.wifi->password);
-    Serial0.printf("hostname: %s\n", cfg.hostname);
-    Serial0.printf("utcOffset: %d\n", cfg.clockCfg.utcOffset);
-    Serial0.printf("refreshMin: %d\n", cfg.clockCfg.refreshMin);
-    Serial0.printf("ntpSyncDays: %d\n", cfg.clockCfg.ntpSyncDays);
-    Serial0.printf("ntpReSyncDays: %d\n", cfg.clockCfg.ntpReSyncDays);
-    Serial0.printf("quietStart: %d\n", cfg.clockCfg.quietStart);
-    Serial0.printf("quietEnd: %d\n", cfg.clockCfg.quietEnd);
-    Serial0.printf("hour12: %s\n", cfg.clockCfg.hour12 ? "true" : "false");
-    Serial0.printf("quietEnabled: %s\n", cfg.clockCfg.quietEnabled ? "true" : "false");
-    Serial0.printf("powerSave: %s\n", cfg.clockCfg.powerSave ? "true" : "false");
-    Serial0.printf("showBattPct: %s\n", cfg.clockCfg.showBattPct ? "true" : "false");
-    Serial0.printf("showHum: %s\n", cfg.clockCfg.showHum ? "true" : "false");
-    Serial0.printf("showTemp: %s\n", cfg.clockCfg.showTemp ? "true" : "false");
-    Serial0.printf("showRssi: %s\n", cfg.clockCfg.showRssi ? "true" : "false");
-
     Serial0.println("=== load_config() done ===");
-    // // Restore NTP schedule into RTC NVRAM so deep-sleep state
-    // // is correct even after a full power cycle.
-    // uint32_t savedEpoch = doc["ntpEpoch"] | 0;
-    // bool     savedPending = doc["ntpPending"] | true;
-    // if (savedEpoch > 0 && rtcNvLastNtpEpoch == 0) {
-    //     // Only restore if NVRAM was wiped (cold boot)
-    //     rtcNvLastNtpEpoch = savedEpoch;
-    //     rtcNvNtpPending = savedPending;
-    //     Serial0.printf("Config: restored NTP epoch %u, pending=%d\n",
-    //         savedEpoch, savedPending);
-    // }
-
     f.close();
 }
 

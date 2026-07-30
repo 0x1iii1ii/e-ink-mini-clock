@@ -119,7 +119,7 @@ void drawDisplay() {
     months[t.tm_mon] + "-" +
     String(1900 + t.tm_year);
 
-  Serial0.println("filling white");
+  // Serial0.println("filling white");
   gfx.fillScreen(EPD_WHITE);
 
   // ── Constants (296 x 152 EPD_266 panel) ───────────────
@@ -131,10 +131,10 @@ void drawDisplay() {
 
   // Approximate pixel widths at textSize 2 (6px per char * 2 = 12px/char)
   const int BATT_ICON_W = 30;   // battery icon
-  const int BATT_PCT_W = 36;   // "100%"
+  const int BATT_PCT_W = 30;   // "100%"
   const int WIFI_W = 26;   // wifi bars graphic
-  const int HUM_W = 48;   // "100%H"
-  const int TEMP_W = 36;   // "100C"
+  const int HUM_W = 42;   // "100%H"
+  const int TEMP_W = 30;   // "100C"
   const int AMPM_W = 24;   // "AM" / "PM"
 
   // ── TOP BAR ──────────────────────────────────────────

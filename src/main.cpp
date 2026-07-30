@@ -267,11 +267,14 @@ void setup() {
   init_fs();
   rtcNvBootCount++;
 
-  Serial0.println("\n=== e-ink Mini Clock booting... ===");
-  Serial0.printf("Firmware version: %s\n", FW_VERSION);
+  Serial0.println("\n=== ★ e-ink Mini Clock ★ ===");
+  Serial0.printf("Firmware version: v%s\n", FW_VERSION);
   Serial0.printf("build: %s %s\n", __DATE__, __TIME__);
+  Serial0.println("Github: https://github.com/0x1iii1ii");
+  Serial0.println("Facebook: https://www.facebook.com/liisengxyz");
   Serial0.printf("\n=== ePaper Clock  wake #%u ===\n", rtcNvBootCount);
   Serial0.printf("Wakeup cause: %d\n", esp_sleep_get_wakeup_cause());
+
   // ── I2C initialization ────────────────────────────────
   Wire.begin(I2C_SDA, I2C_SCL);
   Wire.setClock(400000);

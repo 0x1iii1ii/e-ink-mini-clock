@@ -150,11 +150,22 @@ void doNtpSync() {
         // Update last-attempt time so retry fires 24 h from now
         DateTime now = rtc.now();
         rtcNvLastNtpEpoch = now.unixtime();
-        WiFi.disconnect(true);
-        WiFi.mode(WIFI_OFF);
+        if (rtcNvBootCount == 1) {
+            // WiFi.disconnect(true);
+            WiFi.mode(WIFI_OFF);
+            delay(1000);
+            WiFi.mode(WIFI_AP);
+            Serial0.println("wifi connect failed — starting AP mode");
+            WiFi.softAP(AP_SSID, AP_PASS);
+            Serial0.println("AP IP: " + WiFi.softAPIP().toString());
+        }
+        else {
+            WiFi.disconnect(true);
+            WiFi.mode(WIFI_OFF);
+        }
         return;
     }
-
+    Serial0.println("\nWiFi: " + WiFi.localIP().toString());
     Serial0.println("\nNTP: WiFi OK — syncing...");
     if (sync_time()) {
         Serial0.println("NTP: sync successful");
