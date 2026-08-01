@@ -109,7 +109,7 @@ void drawDisplay() {
   int hr = t.tm_hour;
   int min = t.tm_min;
   bool pm = (hr >= 12);
-  if (cfg.clockCfg.hour12) {
+  if (cfg.clock.hour12) {
     hr = hr % 12;
     if (hr == 0) hr = 12;
   }
@@ -149,8 +149,8 @@ void drawDisplay() {
   rightX -= ITEM_SPACING;
 
   // will only show battery % if power saving mode is on
-  if (cfg.clockCfg.powerSave) {
-    if (cfg.clockCfg.showBattPct) {
+  if (cfg.clock.powerSave) {
+    if (cfg.display.showBattPct) {
       rightX -= BATT_PCT_W;
       gfx.setTextColor(EPD_BLACK);
       gfx.setTextSize(TEXT_SIZE);
@@ -160,13 +160,13 @@ void drawDisplay() {
       rightX -= ITEM_SPACING;
     }
   }
-  else if (cfg.clockCfg.showRssi) {
+  else if (cfg.display.showRssi) {
     rightX -= WIFI_W;
     drawWifiBars(rightX, TOP_Y - 5, WiFi.RSSI());
     rightX -= ITEM_SPACING;
   }
 
-  if (cfg.clockCfg.showHum) {
+  if (cfg.display.showHum) {
     rightX -= HUM_W;
     gfx.setTextColor(EPD_BLACK);
     gfx.setTextSize(TEXT_SIZE);
@@ -176,37 +176,13 @@ void drawDisplay() {
     rightX -= ITEM_SPACING;
   }
 
-  if (cfg.clockCfg.showTemp) {
+  if (cfg.display.showTemp) {
     rightX -= TEMP_W;
     gfx.setTextColor(EPD_RED);
     gfx.setTextSize(TEXT_SIZE);
     gfx.setCursor(rightX, TOP_Y);
     gfx.print(String(g_temperature, 0));
     gfx.print("C");
-  }
-
-  // ── ALARM STATUS ─────────────────────────────────────
-  // Show alarm time in top-left area if enabled or in setting mode
-  if (g_alarmSettingMode || cfg.clockCfg.alarm.enabled) {
-    gfx.setTextColor(EPD_RED);
-    gfx.setTextSize(1);
-    String alarmStr = "ALM ";
-    alarmStr += (cfg.clockCfg.alarm.hour < 10 ? "0" : "") + String(cfg.clockCfg.alarm.hour);
-    alarmStr += ":";
-    alarmStr += (cfg.clockCfg.alarm.minute < 10 ? "0" : "") + String(cfg.clockCfg.alarm.minute);
-
-    if (g_alarmSettingMode) {
-      // Show editing indicator
-      if (g_alarmEditIdx == 0) {
-        alarmStr = "ALM [" + (String) (cfg.clockCfg.alarm.hour < 10 ? "0" : "") + String(cfg.clockCfg.alarm.hour) + "] : " + (String) (cfg.clockCfg.alarm.minute < 10 ? "0" : "") + String(cfg.clockCfg.alarm.minute);
-      }
-      else {
-        alarmStr = "ALM " + (String) (cfg.clockCfg.alarm.hour < 10 ? "0" : "") + String(cfg.clockCfg.alarm.hour) + " : [" + (String) (cfg.clockCfg.alarm.minute < 10 ? "0" : "") + String(cfg.clockCfg.alarm.minute) + "]";
-      }
-    }
-
-    gfx.setCursor(SCREEN_W2 - 80, TOP_Y);
-    gfx.print(alarmStr);
   }
 
   // ── DIVIDERS ─────────────────────────────────────────
@@ -216,30 +192,22 @@ void drawDisplay() {
   // ── BIG CLOCK ────────────────────────────────────────
   bigFont.drawTime(hr, min, EPD_BLACK);
 
-  // // AM/PM — top-right of clock area, above bottom bar
-  // if (cfg.clockCfg.hour12) {
-  //   gfx.setTextColor(EPD_BLACK);
-  //   gfx.setTextSize(TEXT_SIZE);
-  //   gfx.setCursor(SCREEN_W2 - AMPM_W - 4, LINE_TOP_BAR + 4);
-  //   gfx.print(pm ? "PM" : "AM");
-  // }
-
   // ── BOTTOM BAR ───────────────────────────────────────
   const String ipStr = "IP:" + WiFi.localIP().toString();
   const String wifiStr = (WiFi.status() == WL_CONNECTED) ? "Online" : "Offline";
   String hrStr = "";
-  if (cfg.clockCfg.hour12) hrStr = pm ? "PM" : "AM";
+  if (cfg.clock.hour12) hrStr = pm ? "PM" : "AM";
   const String utcStr = String("UTC") +
-    (cfg.clockCfg.utcOffset >= 0 ? "+" : "") +
-    String((int) cfg.clockCfg.utcOffset);
-  const String refreshStr = String(cfg.clockCfg.refreshMin) + "min";
-  String host = String(cfg.hostname);
+    (cfg.clock.utcOffset >= 0 ? "+" : "") +
+    String((int) cfg.clock.utcOffset);
+  const String refreshStr = String(cfg.clock.refreshMin) + "min";
+  String host = String(cfg.wifi.hostname);
   if (host.length() > 12) host = host.substring(0, 11) + "~";
 
   // Build one right-side string
   const String rightStr = /* host + ".local | " + */ String(FW_VERSION) +
     " | " + wifiStr +
-    " | " + (cfg.clockCfg.hour12 ? hrStr : utcStr);
+    " | " + (cfg.clock.hour12 ? hrStr : utcStr);
 
   int rightW = rightStr.length() * 6;
 
@@ -258,7 +226,7 @@ void drawDisplay() {
 
   Serial0.println("[Display] Updated — " + dateStr +
     " " + zp(hr) + ":" + zp(min) +
-    (cfg.clockCfg.hour12 ? (pm ? " PM" : " AM") : ""));
+    (cfg.clock.hour12 ? (pm ? " PM" : " AM") : ""));
 }
 
 void showSetupScreen(uint8_t mode) {
@@ -339,7 +307,7 @@ void boot_splash() {
   gfx.print("Connecting to WiFi...");
   gfx.setTextSize(1);
   gfx.setCursor(8, 74);
-  gfx.print(cfg.wifi->ssid);
+  gfx.print(cfg.wifi.wifi->ssid);
   gfx.setTextColor(EPD_RED);
   gfx.setCursor(8, 90);
   gfx.print("EPD_266  296x152  3-colour (B/W/R)");

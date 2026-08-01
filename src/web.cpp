@@ -17,9 +17,11 @@ WebServer        server(80);
 HTTPUpdateServer httpUpdater;
 
 // Uptime tracking (seconds since boot)
-static unsigned long _bootMs = 0;
 time_t lastRefreshEpoch = 0;
-unsigned long lastHttpActivityMs; // updated on every request handler call
+static unsigned long _bootMs = 0;
+static String   _updatePayload = "";
+static bool     _updateChecking = false;
+static bool     _updateReady = false;
 
 // ── Static file helper ─────────────────────────────────────
 
@@ -38,14 +40,9 @@ static const GzResource gz_resources[] = {
   { "/favicon.ico", (const unsigned char*) favicon_ico, sizeof(favicon_ico), "image/x-icon" },
 };
 
-bool isWebClientActive() {
-  return (millis() - lastHttpActivityMs) < 5000; // active within last 5s
-}
-
 bool handleFileRead(String path) {
   // Normalize root path
   if (path == "/") path = "/index.html";
-
   // Search for matching resource
   for (const auto& resource : gz_resources) {
     if (path == resource.path) {
@@ -57,7 +54,6 @@ bool handleFileRead(String path) {
       return true;
     }
   }
-
   Serial0.println("Resource not found: " + path);
   return false;
 }
@@ -67,7 +63,7 @@ void handleNotFound() {
     server.send(404, "text/plain", "Not Found");
 }
 
-// ── CORS helper (portal may be loaded from 192.168.4.1) ───
+// ── CORS helper ────────────────────────────────────────────
 void addCORSHeaders() {
   server.sendHeader("Access-Control-Allow-Origin", "*");
   server.sendHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
@@ -80,28 +76,12 @@ void addCORSHeaders() {
 
 void handleConfig() {
   addCORSHeaders();
-  lastHttpActivityMs = millis();
 
-  String json = "{";
-  json += "\"ssid\":\"" + String(cfg.wifi->ssid) + "\",";
-  json += "\"hostname\":\"" + String(cfg.hostname) + "\",";
-  json += "\"utcOffset\":" + String(cfg.clockCfg.utcOffset) + ",";
-  json += "\"refreshMin\":" + String(cfg.clockCfg.refreshMin) + ",";
-  json += "\"ntpSyncDays\":" + String(cfg.clockCfg.ntpSyncDays) + ",";
-  json += "\"ntpReSyncDays\":" + String(cfg.clockCfg.ntpReSyncDays) + ",";
-  json += "\"quietStart\":" + String(cfg.clockCfg.quietStart) + ",";
-  json += "\"quietEnd\":" + String(cfg.clockCfg.quietEnd) + ",";
-  json += "\"hour12\":" + String(cfg.clockCfg.hour12 ? "true" : "false") + ",";
-  json += "\"quietEnabled\":" + String(cfg.clockCfg.quietEnabled ? "true" : "false") + ",";
-  json += "\"powerSave\":" + String(cfg.clockCfg.powerSave ? "true" : "false") + ",";
-  json += "\"showBattPct\":" + String(cfg.clockCfg.showBattPct ? "true" : "false") + ",";
-  json += "\"showHum\":" + String(cfg.clockCfg.showHum ? "true" : "false") + ",";
-  json += "\"showTemp\":" + String(cfg.clockCfg.showTemp ? "true" : "false") + ",";
-  json += "\"showRSSI\":" + String(cfg.clockCfg.showRssi ? "true" : "false") + ",";
-  json += "\"alarmHour\":" + String(cfg.clockCfg.alarm.hour) + ",";
-  json += "\"alarmMinute\":" + String(cfg.clockCfg.alarm.minute) + ",";
-  json += "\"alarmEnabled\":" + String(cfg.clockCfg.alarm.enabled ? "true" : "false") + "";
-  json += "}";
+  JsonDocument doc;
+  build_config_json(doc);
+
+  String json;
+  serializeJson(doc, json);
   server.send(200, "application/json", json);
 }
 
@@ -110,6 +90,7 @@ void handleConfig() {
 
 void handleOtaUrl() {
   addCORSHeaders();
+
   String url = server.arg("url");
   if (url.isEmpty()) {
     server.send(400, "application/json", "{\"ok\":false,\"msg\":\"No URL\"}");
@@ -153,24 +134,7 @@ void handleOtaUrl() {
     Serial0.println("No update available");
     break;
   }
-
-  // // Use HTTPUpdate
-  // WiFiClientSecure client;
-  // client.setInsecure();   // or set a CA cert for production
-
-  // t_httpUpdate_return ret = httpUpdate.update(client, url);
-  // switch (ret) {
-  // case HTTP_UPDATE_OK:     ESP.restart(); break;
-  // case HTTP_UPDATE_FAILED:
-  //   Serial0.printf("OTA URL failed: %s\n", httpUpdate.getLastErrorString().c_str());
-  //   break;
-  // default: break;
-  // }
 }
-
-static String   _updatePayload = "";
-static bool     _updateChecking = false;
-static bool     _updateReady = false;
 
 void doVersionFetch() {
   if (!_updateChecking) return;
@@ -194,6 +158,7 @@ void doVersionFetch() {
 
 void handleCheckUpdate() {
   addCORSHeaders();
+
   if (_updateChecking) {
     server.send(200, "application/json", "{\"ok\":false,\"msg\":\"Already checking\"}");
     return;
@@ -215,7 +180,6 @@ void handleCheckUpdate() {
 
 void handleStatus() {
   addCORSHeaders();
-  lastHttpActivityMs = millis();
 
   struct tm t;
   if (!getRtcTime(&t)) {
@@ -302,33 +266,33 @@ void handleSaveClock() {
 
   // value inputs
   if (server.hasArg("utcOffset"))
-    cfg.clockCfg.utcOffset = (int8_t) server.arg("utcOffset").toInt();
+    cfg.clock.utcOffset = (int8_t) server.arg("utcOffset").toInt();
   if (server.hasArg("refreshMin"))
-    cfg.clockCfg.refreshMin = (uint8_t) constrain(server.arg("refreshMin").toInt(), 1, 60);
+    cfg.clock.refreshMin = (uint8_t) constrain(server.arg("refreshMin").toInt(), 1, 60);
   if (server.hasArg("ntpSyncDays"))
-    cfg.clockCfg.ntpSyncDays = (uint8_t) constrain(server.arg("ntpSyncDays").toInt(), 1, 7);
+    cfg.clock.ntpSyncDays = (uint8_t) constrain(server.arg("ntpSyncDays").toInt(), 1, 7);
   if (server.hasArg("ntpReSyncDays"))
-    cfg.clockCfg.ntpReSyncDays = (uint8_t) constrain(server.arg("ntpReSyncDays").toInt(), 1, 3); // limit to 3 days 
+    cfg.clock.ntpReSyncDays = (uint8_t) constrain(server.arg("ntpReSyncDays").toInt(), 1, 3); // limit to 3 days 
   if (server.hasArg("quietStart"))
-    cfg.clockCfg.quietStart = (uint8_t) constrain(server.arg("quietStart").toInt(), 0, 23);
+    cfg.clock.quietStart = (uint8_t) constrain(server.arg("quietStart").toInt(), 0, 23);
   if (server.hasArg("quietEnd"))
-    cfg.clockCfg.quietEnd = (uint8_t) constrain(server.arg("quietEnd").toInt(), 0, 23);
+    cfg.clock.quietEnd = (uint8_t) constrain(server.arg("quietEnd").toInt(), 0, 23);
 
   // Alarm settings
   if (server.hasArg("alarmHour"))
-    cfg.clockCfg.alarm.hour = (uint8_t) constrain(server.arg("alarmHour").toInt(), 0, 23);
+    cfg.clock.alarm[0].hour = (uint8_t) constrain(server.arg("alarmHour").toInt(), 0, 23);
   if (server.hasArg("alarmMinute"))
-    cfg.clockCfg.alarm.minute = (uint8_t) constrain(server.arg("alarmMinute").toInt(), 0, 59);
+    cfg.clock.alarm[0].minute = (uint8_t) constrain(server.arg("alarmMinute").toInt(), 0, 59);
 
   // check boxes
-  cfg.clockCfg.hour12 = server.hasArg("hour12");
-  cfg.clockCfg.quietEnabled = server.hasArg("quietEnabled");
-  cfg.clockCfg.powerSave = server.hasArg("powerSave");
-  cfg.clockCfg.showBattPct = server.hasArg("showBattPct");
-  cfg.clockCfg.showHum = server.hasArg("showHum");
-  cfg.clockCfg.showTemp = server.hasArg("showTemp");
-  cfg.clockCfg.showRssi = server.hasArg("showRSSI");
-  cfg.clockCfg.alarm.enabled = server.hasArg("alarmEnabled");
+  cfg.clock.hour12 = server.hasArg("hour12");
+  cfg.clock.quietEnabled = server.hasArg("quietEnabled");
+  cfg.clock.powerSave = server.hasArg("powerSave");
+  cfg.display.showBattPct = server.hasArg("showBattPct");
+  cfg.display.showHum = server.hasArg("showHum");
+  cfg.display.showTemp = server.hasArg("showTemp");
+  cfg.display.showRssi = server.hasArg("showRSSI");
+  cfg.clock.alarm[0].enabled = server.hasArg("alarmEnabled");
 
   save_config();
   server.send(200, "application/json", "{\"ok\":true}");
@@ -344,9 +308,9 @@ void handleSaveWifi() {
   addCORSHeaders();
 
   if (server.hasArg("ssid"))
-    strlcpy(cfg.wifi->ssid, server.arg("ssid").c_str(), sizeof cfg.wifi->ssid);
+    strlcpy(cfg.wifi.wifi->ssid, server.arg("ssid").c_str(), sizeof cfg.wifi.wifi->ssid);
   if (server.hasArg("pass"))
-    strlcpy(cfg.wifi->password, server.arg("pass").c_str(), sizeof cfg.wifi->password);
+    strlcpy(cfg.wifi.wifi->password, server.arg("pass").c_str(), sizeof cfg.wifi.wifi->password);
 
   save_config();
   server.send(200, "application/json", "{\"ok\":true,\"msg\":\"Saved. Rebooting...\"}");
@@ -359,7 +323,7 @@ void handleSaveWifi() {
 void handleSaveHostname() {
   addCORSHeaders();
   if (server.hasArg("hostnameVal"))
-    strlcpy(cfg.hostname, server.arg("hostnameVal").c_str(), sizeof(cfg.hostname));
+    strlcpy(cfg.wifi.hostname, server.arg("hostnameVal").c_str(), sizeof(cfg.wifi.hostname));
   save_config();
   server.send(200, "application/json", "{\"ok\":true}");
 }
@@ -370,7 +334,6 @@ void handleSaveHostname() {
 
 void handleAction() {
   addCORSHeaders();
-  lastHttpActivityMs = millis();
 
   String cmd = server.arg("cmd");
 

@@ -355,45 +355,6 @@ if (hnInput && hnCount) {
   updateHnCount();  // init on load
 }
 
-// ── Serial logs ──────────────────────────────────────────
-let logTimer = null;
-const logToggle = document.getElementById("logToggle");
-const logBox = document.getElementById("logBox");
-const logClearBtn = document.getElementById("logClearBtn");
-
-function pollLog() {
-  if (!logBox) return;
-  fetch("/api/log")
-    .then((r) => r.text())
-    .then((txt) => {
-      const atBottom =
-        logBox.scrollTop + logBox.clientHeight >= logBox.scrollHeight - 10;
-      logBox.textContent = txt;
-      if (atBottom) logBox.scrollTop = logBox.scrollHeight;
-    })
-    .catch(() => { });
-}
-
-if (logToggle) {
-  logToggle.addEventListener("change", () => {
-    const on = logToggle.checked;
-    if (logBox) logBox.style.display = on ? "block" : "none";
-    if (logClearBtn) logClearBtn.style.display = on ? "inline-block" : "none";
-    if (on) {
-      pollLog();
-      logTimer = setInterval(pollLog, 1000);
-    } else {
-      clearInterval(logTimer);
-    }
-  });
-}
-
-if (logClearBtn) {
-  logClearBtn.addEventListener("click", () => {
-    fetch("/api/log/clear", { method: "POST" }).then(pollLog);
-  });
-}
-
 // ── POST /action ──────────────────────────────────────────
 function doAction(action, msg) {
   if (!confirm(msg)) return;
@@ -656,4 +617,122 @@ function pollForReboot(labelEl) {
       if (labelEl) labelEl.textContent = 'Rebooting… (' + attempts + ')';
     });
   }, 3000);
+}
+
+// ── Alarm ──────────────────────
+const MAX_ALARMS = 3;
+let alarms = [];
+
+function renderAlarms() {
+  const list = document.getElementById('alarmsList');
+  const tpl = document.getElementById('alarmRowTpl');
+  list.innerHTML = '';
+
+  alarms.forEach((al, idx) => {
+    const row = tpl.content.firstElementChild.cloneNode(true);
+    row.dataset.idx = idx;
+
+    row.querySelector('.alarm-name').value = al.name || '';
+    row.querySelector('.alarm-enabled').checked = !!al.enabled;
+    row.querySelector('.alarm-hour').value = al.hour ?? 7;
+    row.querySelector('.alarm-minute').value = al.minute ?? 0;
+    row.querySelector(".alarm-snooze-min").addEventListener("change", () => updateAlarmSummary(row));
+    row.querySelector(".alarm-snooze-repeat").addEventListener("change", () => updateAlarmSummary(row));
+    row.querySelector(".alarm-snooze-sound").addEventListener("change", () => updateAlarmSummary(row));
+
+    const expandBtn = row.querySelector('.alarm-expand');
+    const extra = row.querySelector('.alarm-extra');
+
+    expandBtn.onclick = () => {
+      expandBtn.classList.toggle('open');
+      extra.classList.toggle('open');
+    };
+
+    row.querySelectorAll('.day-btn').forEach((btn) => {
+      const bit = Number(btn.dataset.bit);
+      if ((al.repeatDays || 0) & bit) btn.classList.add('on');
+      btn.onclick = () => btn.classList.toggle('on');
+    });
+
+    row.querySelector('.alarm-remove').onclick = () => {
+      alarms.splice(idx, 1);
+      renderAlarms();
+    };
+
+    list.appendChild(row);
+  });
+
+  document.getElementById('alarmCount').textContent = `${alarms.length} / ${MAX_ALARMS}`;
+  document.getElementById('addAlarmBtn').disabled = alarms.length >= MAX_ALARMS;
+}
+
+document.getElementById('addAlarmBtn').addEventListener('click', () => {
+  if (alarms.length >= MAX_ALARMS) return;
+  alarms.push({ name: 'Alarm', hour: 7, minute: 0, enabled: true, repeatDays: 0, snooze: { minutes: 5, repeat: 2, sound: 1 } });
+  renderAlarms();
+});
+
+document.getElementById('saveAlarmsBtn').addEventListener('click', async () => {
+  const rows = document.querySelectorAll('#alarmsList .alarm-row');
+  const payload = Array.from(rows).map((row) => {
+    let repeatDays = 0;
+    row.querySelectorAll('.day-btn.on').forEach((b) => (repeatDays |= Number(b.dataset.bit)));
+    return {
+      name: row.querySelector('.alarm-name').value.slice(0, 15),
+      hour: Number(row.querySelector('.alarm-hour').value),
+      minute: Number(row.querySelector('.alarm-minute').value),
+      enabled: row.querySelector('.alarm-enabled').checked,
+      repeatDays,
+      snooze: {
+        minutes: Number(row.querySelector('.alarm-snooze-min').value),
+        repeat: Number(row.querySelector('.alarm-snooze-repeat').value),
+        sound: Number(row.querySelector('.alarm-snooze-sound').value),
+      },
+    };
+  });
+
+  const res = await fetch('/save-alarms', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ alarms: payload }),
+  });
+  if (res.ok) alert('Alarms saved!');
+});
+
+function updateAlarmSummary(row) {
+  row.querySelector(".sum-min").textContent =
+    row.querySelector(".alarm-snooze-min").value;
+
+  row.querySelector(".sum-repeat").textContent =
+    row.querySelector(".alarm-snooze-repeat").value;
+
+  row.querySelector(".sum-sound").textContent =
+    row.querySelector(".alarm-snooze-sound").selectedOptions[0].text;
+}
+
+// call after fetching current config, e.g. inside your existing loadConfig():
+// alarms = configJson.alarms || [];
+// renderAlarms();
+function to24Hour(hour12, period) {
+  let h = Number(hour12);
+
+  if (period === "AM") {
+    if (h === 12) h = 0;
+  } else {
+    if (h !== 12) h += 12;
+  }
+
+  return h;
+}
+
+function to12Hour(hour24) {
+  let period = hour24 >= 12 ? "PM" : "AM";
+  let hour = hour24 % 12;
+
+  if (hour === 0) hour = 12;
+
+  return {
+    hour,
+    period
+  };
 }

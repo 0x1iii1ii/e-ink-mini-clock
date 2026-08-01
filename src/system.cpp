@@ -40,15 +40,15 @@ so the user can interact with it.
 
 // check if we're currently in quiet hours
 bool isInQuietHours() {
-    if (!cfg.clockCfg.quietEnabled)
+    if (!cfg.clock.quietEnabled)
         return false;
 
     DateTime now = rtc.now();
     uint8_t h = now.hour();
 
-    return (cfg.clockCfg.quietStart > cfg.clockCfg.quietEnd)
-        ? (h >= cfg.clockCfg.quietStart || h < cfg.clockCfg.quietEnd)
-        : (h >= cfg.clockCfg.quietStart && h < cfg.clockCfg.quietEnd);
+    return (cfg.clock.quietStart > cfg.clock.quietEnd)
+        ? (h >= cfg.clock.quietStart || h < cfg.clock.quietEnd)
+        : (h >= cfg.clock.quietStart && h < cfg.clock.quietEnd);
 }
 
 // calculate seconds until the end of quiet hours, used for adjusting sleep duration
@@ -61,11 +61,11 @@ uint32_t secondsUntilQuietEnd() {
         now.second();
 
     uint32_t endSec =
-        cfg.clockCfg.quietEnd * 3600UL;
+        cfg.clock.quietEnd * 3600UL;
 
-    if (cfg.clockCfg.quietStart > cfg.clockCfg.quietEnd) {
+    if (cfg.clock.quietStart > cfg.clock.quietEnd) {
         // spans midnight
-        if (now.hour() >= cfg.clockCfg.quietStart) {
+        if (now.hour() >= cfg.clock.quietStart) {
             return (24UL * 3600UL - nowSec) + endSec;
         }
         else {
@@ -89,10 +89,10 @@ void goToDeepSleep() {
     // WiFi.mode(WIFI_OFF);
     uint32_t sleepSec = effectiveRefreshSec();
     uint64_t sleepUs = (uint64_t) sleepSec * 1000000ULL;
-    if (isInQuietHours() && sleepSec > (cfg.clockCfg.refreshMin * 60UL)) {
+    if (isInQuietHours() && sleepSec > (cfg.clock.refreshMin * 60UL)) {
         Serial0.printf(
             "Quiet hours active, sleeping until %02u:00 (%lu min)\n",
-            cfg.clockCfg.quietEnd,
+            cfg.clock.quietEnd,
             sleepSec / 60UL
         );
     }
@@ -163,7 +163,7 @@ void enterPortalMode(bool factory, bool user) {
 }
 
 uint32_t effectiveRefreshSec() {
-    uint32_t base = (uint32_t) cfg.clockCfg.refreshMin * 60UL;
+    uint32_t base = (uint32_t) cfg.clock.refreshMin * 60UL;
 
     if (!isInQuietHours())
         return base;

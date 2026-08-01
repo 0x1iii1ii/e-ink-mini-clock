@@ -87,7 +87,7 @@ String pendingSsid, pendingPass;
 volatile bool connectRequested = false;
 
 void setStatus(const String& state, const String& ip = "") {
-  StaticJsonDocument<512> doc;
+  JsonDocument doc;
   doc["state"] = state;
   if (ip.length()) doc["ip"] = ip;
   String out;
@@ -98,7 +98,7 @@ void setStatus(const String& state, const String& ip = "") {
 
 class ConfigCB : public NimBLECharacteristicCallbacks {
   void onWrite(NimBLECharacteristic* c, NimBLEConnInfo& connInfo) override {
-    StaticJsonDocument<512> doc;
+    JsonDocument doc;
     if (deserializeJson(doc, c->getValue().c_str())) {
       setStatus("bad_json");
       return;
@@ -176,25 +176,25 @@ void alarmSound2() {
 // ════════════════════════════════════════════════════════════
 //  ALARM FUNCTIONS
 // ════════════════════════════════════════════════════════════
-void checkAlarm() {
-  // Check if current time matches alarm time
-  if (!cfg.clockCfg.alarm.enabled) return;
+// void checkAlarm() {
+//   // Check if current time matches alarm time
+//   if (!cfg.clockCfg.alarm.enabled) return;
 
-  struct tm t;
-  if (!getRtcTime(&t)) return;
+//   struct tm t;
+//   if (!getRtcTime(&t)) return;
 
-  // Only trigger once per minute to avoid repeated alarms
-  unsigned long now = millis();
-  if (now - g_alarmLastTrigger < 60000UL) return;
+//   // Only trigger once per minute to avoid repeated alarms
+//   unsigned long now = millis();
+//   if (now - g_alarmLastTrigger < 60000UL) return;
 
-  if (t.tm_hour == cfg.clockCfg.alarm.hour &&
-    t.tm_min == cfg.clockCfg.alarm.minute) {
-    g_alarmTriggered = true;
-    g_alarmLastTrigger = now;
-    Serial0.println("=== ALARM TRIGGERED ===");
-    alarmSound2();  // Use existing alarm sound
-  }
-}
+//   if (t.tm_hour == cfg.clockCfg.alarm.hour &&
+//     t.tm_min == cfg.clockCfg.alarm.minute) {
+//     g_alarmTriggered = true;
+//     g_alarmLastTrigger = now;
+//     Serial0.println("=== ALARM TRIGGERED ===");
+//     alarmSound2();  // Use existing alarm sound
+//   }
+// }
 
 void startAlarmMode() {
   g_alarmSettingMode = true;
@@ -210,40 +210,40 @@ void exitAlarmMode() {
   drawDisplay();  // Redraw normal display
 }
 
-void handleAlarmButton() {
-  if (!g_alarmSettingMode) return;
+// void handleAlarmButton() {
+//   if (!g_alarmSettingMode) return;
 
-  bool b1 = digitalRead(B1_PIN);
-  bool b2 = digitalRead(B2_PIN);
+//   bool b1 = digitalRead(B1_PIN);
+//   bool b2 = digitalRead(B2_PIN);
 
-  // B1 = Increment current field, B2 = Move to next field / confirm
-  if (b1 == LOW) {
-    beep(1500, 50);  // Click sound
-    if (g_alarmEditIdx == 0) {
-      // Hour editing
-      cfg.clockCfg.alarm.hour = (cfg.clockCfg.alarm.hour + 1) % 24;
-    }
-    else {
-      // Minute editing
-      cfg.clockCfg.alarm.minute = (cfg.clockCfg.alarm.minute + 1) % 60;
-    }
-    drawDisplay();
-    delay(200);  // Debounce
-  }
+//   // B1 = Increment current field, B2 = Move to next field / confirm
+//   if (b1 == LOW) {
+//     beep(1500, 50);  // Click sound
+//     if (g_alarmEditIdx == 0) {
+//       // Hour editing
+//       cfg.clockCfg.alarm.hour = (cfg.clockCfg.alarm.hour + 1) % 24;
+//     }
+//     else {
+//       // Minute editing
+//       cfg.clockCfg.alarm.minute = (cfg.clockCfg.alarm.minute + 1) % 60;
+//     }
+//     drawDisplay();
+//     delay(200);  // Debounce
+//   }
 
-  if (b2 == LOW) {
-    beep(2000, 50);  // Different click sound
-    if (g_alarmEditIdx == 0) {
-      g_alarmEditIdx = 1;  // Move to minute
-    }
-    else {
-      cfg.clockCfg.alarm.enabled = !cfg.clockCfg.alarm.enabled;  // Toggle enable
-      exitAlarmMode();  // Exit mode
-    }
-    drawDisplay();
-    delay(200);  // Debounce
-  }
-}
+//   if (b2 == LOW) {
+//     beep(2000, 50);  // Different click sound
+//     if (g_alarmEditIdx == 0) {
+//       g_alarmEditIdx = 1;  // Move to minute
+//     }
+//     else {
+//       cfg.clockCfg.alarm.enabled = !cfg.clockCfg.alarm.enabled;  // Toggle enable
+//       exitAlarmMode();  // Exit mode
+//     }
+//     drawDisplay();
+//     delay(200);  // Debounce
+//   }
+// }
 
 void startUpSound() {
   beep(1200, 80);
@@ -259,10 +259,6 @@ void startUpSound() {
 // ════════════════════════════════════════════════════════════
 void setup() {
   Serial0.begin(115200);
-  // Short delay only on first boot; skip on subsequent wakes to save time
-  // if (rtcNvBootCount == 0) delay(2000);
-  delay(3000);  // wait for serial monitor
-
   // ── Load config from LittleFS ─────────────────────────
   init_fs();
   rtcNvBootCount++;
@@ -332,7 +328,7 @@ void setup() {
   g_isVbusConnected = isVbusConnected();
 
   // ── First boot / factory state ────────────────────────
-  if (strlen(cfg.wifi->ssid) == 0 || strlen(cfg.wifi->password) == 0) {
+  if (strlen(cfg.wifi.wifi->ssid) == 0 || strlen(cfg.wifi.wifi->password) == 0) {
     Serial0.println("No WiFi configured — entering setup mode");
     enterPortalMode(true);
   }
@@ -343,7 +339,7 @@ void setup() {
   }
 
   // ── Power saving mode ───────────────────────────────────
-  if (!cfg.clockCfg.powerSave) {
+  if (!cfg.clock.powerSave) {
     Serial0.println("Power save mode: OFF — full features enabled");
     g_powerSaveMode = false;
     // ── WiFi initialization ──────────────────────────────
@@ -473,7 +469,7 @@ void loop() {
   // Handle individual button presses
   if (g_alarmSettingMode) {
     // In alarm setting mode, buttons are used for editing
-    handleAlarmButton();
+    // handleAlarmButton();
   }
   else {
     // Normal mode button handling
@@ -499,9 +495,8 @@ void loop() {
     // Alarm will keep playing from beep() call in checkAlarm()
   }
 
-  checkAlarm();  // Check if alarm should trigger
-
   if (!g_powerSaveMode) {
+    // checkAlarm();  // Check if alarm should trigger
     maintainWifi();
     web_loop();
     unsigned long ms = millis();
@@ -519,7 +514,7 @@ void loop() {
     }
 
     // Refresh display on schedule
-    if (ms - lastRefresh >= static_cast<unsigned long>(cfg.clockCfg.refreshMin) * 60000UL) {
+    if (ms - lastRefresh >= static_cast<unsigned long>(cfg.clock.refreshMin) * 60000UL) {
       lastRefresh = ms;
       // sync_time();
       DateTime d = rtc.now();
@@ -527,7 +522,7 @@ void loop() {
       drawDisplay();
     }
 
-    if (!isVbusConnected() && cfg.clockCfg.powerSave) {
+    if (!isVbusConnected() && cfg.clock.powerSave) {
       Serial0.println("USB power lost — entering power save mode");
       g_powerSaveMode = true;
       goToDeepSleep();

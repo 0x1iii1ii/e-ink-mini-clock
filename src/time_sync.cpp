@@ -109,7 +109,7 @@ bool sync_time() {
     if (now > 1000000000L) {
         Serial0.println("Sync OK!");
         // Apply UTC offset to get local time
-        now = now + (long) cfg.clockCfg.utcOffset * 3600L;
+        now = now + (long) cfg.clock.utcOffset * 3600L;
         // Push the synced time into the RTC so it survives a reboot without WiFi.
         rtc.adjust(DateTime((uint32_t) now));
         Serial0.printf("RTC updated to: %04d-%02d-%02d %02d:%02d:%02d\n",
@@ -133,9 +133,9 @@ void doNtpSync() {
     Serial0.println("NTP: connecting WiFi...");
 
     // Brief WiFi connection — timeout 12 s
-    WiFi.setHostname(cfg.hostname);
+    WiFi.setHostname(cfg.wifi.hostname);
     WiFi.mode(WIFI_STA);
-    WiFi.begin(cfg.wifi->ssid, cfg.wifi->password);
+    WiFi.begin(cfg.wifi.wifi->ssid, cfg.wifi.wifi->password);
 
     unsigned long t0 = millis();
     while (WiFi.status() != WL_CONNECTED && millis() - t0 < 12000) {
