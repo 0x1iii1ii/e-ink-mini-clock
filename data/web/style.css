@@ -62,9 +62,9 @@
     }
 
     .portal-header .brand-icon {
-        font-size: 26px;
+        font-size: 30px;
         line-height: 1;
-        filter: drop-shadow(0 0 10px rgba(245, 158, 11, .6));
+        filter: drop-shadow(0 0 5px rgba(245, 158, 11, .6));
         margin: 0
     }
 

@@ -11,6 +11,11 @@
  * and is provided under the GPLv3 License. See LICENSE file for details.
  */
 
+// ── Variables ──────────────────────────────────────────────
+
+const MAX_ALARMS = 3;
+let alarms = [];
+
 // ── Helpers ──────────────────────────────────────────────
 function el(id) {
   return document.getElementById(id);
@@ -21,9 +26,16 @@ function setText(id, v) {
   if (e) e.textContent = v;
 }
 
-function setVal(id, v) {
-  var e = el(id);
-  if (e) e.value = v;
+// function setVal(id, v) {
+//   var e = el(id);
+//   if (e) e.value = v;
+// }
+
+function setVal(id, v, fallback = '') {
+  const e = el(id);
+  if (!e) return;
+
+  e.value = (v !== undefined && v !== null) ? v : fallback;
 }
 
 function setCheck(id, v) {
@@ -104,30 +116,53 @@ fetch("/config")
     return r.json();
   })
   .then(function (d) {
-    setVal('utcOffset', d.utcOffset);
-    setVal('refreshMin', d.refreshMin);
-    setVal('ntpSyncDays', d.ntpSyncDays);
-    setVal('ntpReSyncDays', d.ntpReSyncDays);
-    setVal('quietStart', d.quietStart);
-    setVal('quietEnd', d.quietEnd);
-    setCheck('hour12', d.hour12);
-    setCheck('quietEnabled', d.quietEnabled);
-    setCheck('powerSave', d.powerSave);
-    setCheck('showBattPct', d.showBattPct);
-    setCheck('showHum', d.showHum);
-    setCheck('showTemp', d.showTemp);
-    setCheck('showRSSI', d.showRSSI);
-    setVal('alarmHour', d.alarmHour);
-    setVal('alarmMinute', d.alarmMinute);
-    setCheck('alarmEnabled', d.alarmEnabled);
-    setVal('ssid', d.ssid);
-    setText('hostNameSide', d.hostname);
-    setText('currentHostname', d.hostname);
+    // ── Clock ─────────────────────────────
+    setVal("utcOffset", d.clock?.utcOffset, 7);
+    setVal("ntpSyncDays", d.clock?.ntpSyncDays, 7);
+    setVal("ntpReSyncDays", d.clock?.ntpReSyncDays, 1);
+    setCheck("hour12", d.clock?.hour12);
+
+    // ── Display ────────────────────────────
+    setVal("refreshMin", d.display?.refreshMin, 2);
+    setVal("clock-style", d.display?.style, "default");
+    setCheck("showBattPct", d.display?.showBattPct);
+    setCheck("showHum", d.display?.showHum);
+    setCheck("showTemp", d.display?.showTemp);
+    setCheck("showRSSI", d.display?.showRssi);
+
+    // ── Device ────────────────────────────
+    setVal("quietStart", d.device?.quietStart, 0);
+    setVal("quietEnd", d.device?.quietEnd, 5);
+    setCheck("quietEnabled", d.device?.quietEnabled);
+    setCheck("powerSave", d.device?.powerSave);
+
+    // ── Wi-Fi ─────────────────────────────
+    setVal("ssid", d.wifi?.networks?.[0]?.ssid, "");
+    setText("hostNameSide", d.wifi?.hostname || "");
+    setText("currentHostname", d.wifi?.hostname || "");
+
+    // ── Alarms ────────────────────────────
+    alarms = (d.alarms || []).filter(al =>
+      al.name ||
+      al.enabled ||
+      al.hour !== 0 ||
+      al.minute !== 0 ||
+      al.repeatDays ||
+      al.snooze?.minutes ||
+      al.snooze?.repeat ||
+      al.snooze?.sound
+    );
+
+    // renderAlarms();
   })
-  .catch(function () { });
+  .catch(function (err) {
+    console.error("Failed to load config:", err);
+  });
 
 // ── GET /status — poll every 5 s ─────────────────────────
+let otaRebooting = false;
 function pollStatus() {
+  if (otaRebooting) return;
   fetch("/status")
     .then(function (r) {
       return r.json();
@@ -136,9 +171,11 @@ function pollStatus() {
 
       // Device info panel
       setText('fwVerVal', d.firmware);
+      setText('fwVerValTop', d.firmware);
       setText('otaCurVer', d.firmware);
       setText('macVal', d.mac);
       setText('ipAddrVal', d.ip);
+      setText('ipAddrValTop', d.ip);
       setText('ipAddrValSide', d.ip);
       setText('hostNameSide', d.hostname);
       setText('heapVal', d.heap + ' KB');
@@ -299,6 +336,50 @@ if (clockForm) {
   });
 }
 
+// ── POST /save-display ─────────────────────────────────────
+var displayForm = el("displayForm");
+if (displayForm) {
+  displayForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var fd = new FormData(displayForm);
+    fetch("/save-display", { method: "POST", body: new URLSearchParams(fd) })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (d) {
+        showAlert(
+          d.ok ? "Display settings saved! Rebooting" : "saved failed, try again!" + d.msg,
+          d.ok ? "ok" : "er",
+        );
+      })
+      .catch(function () {
+        showAlert("Save failed", "er");
+      });
+  });
+}
+
+// ── POST /save-device ─────────────────────────────────────
+var deviceForm = el("deviceForm");
+if (deviceForm) {
+  deviceForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var fd = new FormData(deviceForm);
+    fetch("/save-device", { method: "POST", body: new URLSearchParams(fd) })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (d) {
+        showAlert(
+          d.ok ? "Device settings saved! Rebooting" : "saved failed, try again!" + d.msg,
+          d.ok ? "ok" : "er",
+        );
+      })
+      .catch(function () {
+        showAlert("Save failed", "er");
+      });
+  });
+}
+
 // ── POST /save-wifi ──────────────────────────────────────
 var wifiForm = el("wifiForm");
 if (wifiForm) {
@@ -450,24 +531,24 @@ function startOTA() {
       fill.style.width = '100%';
       pct.textContent = '100%';
       if (label) label.textContent = 'Done — restarting…';
-      showAlert('✓ Upload complete — device restarting', 'ok');
+      showAlert('Upload complete — device restarting', 'ok');
       pollForReboot();
     } else {
       if (label) label.textContent = 'Server error: ' + xhr.status;
       fill.style.background = 'var(--er-tx)';
-      showAlert('✗ Upload failed (' + xhr.status + ')', 'er');
+      showAlert('Upload failed (' + xhr.status + ')', 'er');
     }
   };
 
   xhr.onerror = function () {
     if (label) label.textContent = 'Upload error';
     fill.style.background = 'var(--er-tx)';
-    showAlert('✗ Upload failed', 'er');
+    showAlert('Upload failed', 'er');
   };
 
   xhr.ontimeout = function () {
     if (label) label.textContent = 'Timeout';
-    showAlert('✗ Upload timed out', 'er');
+    showAlert('Upload timed out', 'er');
   };
 
   xhr.timeout = 60000;
@@ -600,28 +681,78 @@ function startServerOTA() {
 // ── Poll until device comes back after reboot ─────
 function pollForReboot(labelEl) {
   var attempts = 0;
+  var sawOffline = false;
+  otaRebooting = true;
+
   var timer = setInterval(function () {
     attempts++;
-    if (attempts > 40) {           // ~2 min timeout
+
+    if (attempts > 40) {
       clearInterval(timer);
-      showAlert('⚠ Device not responding — check manually', 'warn');
+      otaRebooting = false;
+      showAlert("Device did not come back online", "warn");
+      if (labelEl) labelEl.textContent = "Timeout — check device";
       return;
     }
-    fetch('/status').then(function (r) {
-      if (r.ok) {
-        clearInterval(timer);
-        if (labelEl) labelEl.textContent = 'Done — device is back online!';
-        showAlert('✓ Update complete! Device is back online.', 'ok');
-      }
-    }).catch(function () {
-      if (labelEl) labelEl.textContent = 'Rebooting… (' + attempts + ')';
-    });
-  }, 3000);
+
+    fetch("/status", {
+      method: "GET",
+      cache: "no-store"
+    })
+      .then(function (r) {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+
+        // Device is responding
+        if (sawOffline) {
+          clearInterval(timer);
+
+          if (labelEl) {
+            labelEl.textContent = "Done — device is back online!";
+          }
+          otaRebooting = false;
+          showAlert("Update complete! Device is back online.", "ok");
+          return;
+        }
+
+        // Don't declare success yet.
+        // We need to first see the device go offline.
+        if (labelEl) {
+          labelEl.textContent = "Waiting for device to restart… (" + attempts + ")";
+        }
+      })
+      .catch(function () {
+        // Connection failure means the ESP has likely gone offline.
+        sawOffline = true;
+
+        if (labelEl) {
+          labelEl.textContent = "Device restarting… (" + attempts + ")";
+        }
+      });
+
+  }, 2000);
 }
+// function pollForReboot(labelEl) {
+//   var attempts = 0;
+//   var timer = setInterval(function () {
+//     attempts++;
+//     if (attempts > 40) {           // ~2 min timeout
+//       clearInterval(timer);
+//       showAlert('⚠ Device not responding — check manually', 'warn');
+//       return;
+//     }
+//     fetch('/status').then(function (r) {
+//       if (r.ok) {
+//         clearInterval(timer);
+//         if (labelEl) labelEl.textContent = 'Done — device is back online!';
+//         showAlert('✓ Update complete! Device is back online.', 'ok');
+//       }
+//     }).catch(function () {
+//       if (labelEl) labelEl.textContent = 'Rebooting… (' + attempts + ')';
+//     });
+//   }, 3000);
+// }
 
 // ── Alarm ──────────────────────
-const MAX_ALARMS = 3;
-let alarms = [];
 
 function renderAlarms() {
   const list = document.getElementById('alarmsList');
@@ -631,14 +762,23 @@ function renderAlarms() {
   alarms.forEach((al, idx) => {
     const row = tpl.content.firstElementChild.cloneNode(true);
     row.dataset.idx = idx;
+    const h12 = to12Hour(al.hour ?? 7);
+    row.querySelector('.alarm-hour').value = h12.hour;
+    row.querySelector('.alarm-period').value = h12.period;
 
     row.querySelector('.alarm-name').value = al.name || '';
     row.querySelector('.alarm-enabled').checked = !!al.enabled;
-    row.querySelector('.alarm-hour').value = al.hour ?? 7;
     row.querySelector('.alarm-minute').value = al.minute ?? 0;
-    row.querySelector(".alarm-snooze-min").addEventListener("change", () => updateAlarmSummary(row));
-    row.querySelector(".alarm-snooze-repeat").addEventListener("change", () => updateAlarmSummary(row));
-    row.querySelector(".alarm-snooze-sound").addEventListener("change", () => updateAlarmSummary(row));
+
+    row.querySelector('.alarm-snooze-min').value = al.snooze?.minutes ?? 5;
+    row.querySelector('.alarm-snooze-repeat').value = al.snooze?.repeat ?? 2;
+    row.querySelector('.alarm-snooze-sound').value = al.snooze?.sound ?? 1;
+
+    updateAlarmSummary(row);
+
+    // row.querySelector(".alarm-snooze-min").addEventListener("change", () => updateAlarmSummary(row));
+    // row.querySelector(".alarm-snooze-repeat").addEventListener("change", () => updateAlarmSummary(row));
+    // row.querySelector(".alarm-snooze-sound").addEventListener("change", () => updateAlarmSummary(row));
 
     const expandBtn = row.querySelector('.alarm-expand');
     const extra = row.querySelector('.alarm-extra');
@@ -678,8 +818,12 @@ document.getElementById('saveAlarmsBtn').addEventListener('click', async () => {
     let repeatDays = 0;
     row.querySelectorAll('.day-btn.on').forEach((b) => (repeatDays |= Number(b.dataset.bit)));
     return {
+      hour: to24Hour(
+        row.querySelector('.alarm-hour').value,
+        row.querySelector('.alarm-period').value
+      ),
       name: row.querySelector('.alarm-name').value.slice(0, 15),
-      hour: Number(row.querySelector('.alarm-hour').value),
+      // hour: Number(row.querySelector('.alarm-hour').value),
       minute: Number(row.querySelector('.alarm-minute').value),
       enabled: row.querySelector('.alarm-enabled').checked,
       repeatDays,
@@ -696,18 +840,34 @@ document.getElementById('saveAlarmsBtn').addEventListener('click', async () => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ alarms: payload }),
   });
-  if (res.ok) alert('Alarms saved!');
+  if (res.ok) {
+    showAlert('Alarms saved!', 'ok');
+  } else {
+    showAlert('Failed to save alarms', 'er');
+  }
 });
 
 function updateAlarmSummary(row) {
-  row.querySelector(".sum-min").textContent =
-    row.querySelector(".alarm-snooze-min").value;
+  const min = row.querySelector(".alarm-snooze-min");
+  const repeat = row.querySelector(".alarm-snooze-repeat");
+  const sound = row.querySelector(".alarm-snooze-sound");
 
-  row.querySelector(".sum-repeat").textContent =
-    row.querySelector(".alarm-snooze-repeat").value;
+  const sumMin = row.querySelector(".sum-min");
+  const sumRepeat = row.querySelector(".sum-repeat");
+  const sumSound = row.querySelector(".sum-sound");
 
-  row.querySelector(".sum-sound").textContent =
-    row.querySelector(".alarm-snooze-sound").selectedOptions[0].text;
+  if (sumMin && min) {
+    sumMin.textContent = min.value;
+  }
+
+  if (sumRepeat && repeat) {
+    sumRepeat.textContent = repeat.value;
+  }
+
+  if (sumSound && sound) {
+    const option = sound.options[sound.selectedIndex];
+    sumSound.textContent = option ? option.text : "Beep";
+  }
 }
 
 // call after fetching current config, e.g. inside your existing loadConfig():
@@ -736,3 +896,4 @@ function to12Hour(hour24) {
     period
   };
 }
+

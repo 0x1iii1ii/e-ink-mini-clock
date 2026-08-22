@@ -19,6 +19,7 @@
 #include "epd_gfx.h"
 #include <Adafruit_AHTX0.h>
 #include <RTClib.h>
+#include "config.h"
 
 // ===== CONFIG STRUCTS =====
 
@@ -52,25 +53,28 @@ typedef struct {
     // clock options
     bool    hour12;
     int8_t  utcOffset;          // default UTC+7 (ICT)
-    uint8_t refreshMin;         // refresh every 2 minutes by default
     uint8_t ntpSyncDays;        // sync NTP every 7 days by default
     uint8_t ntpReSyncDays;      // retry every 1 day if sync fails
+
+    // alarm options
+    alarm_t alarm[MAX_ALARMS];  // alarm settings
+} clock_settings_t;
+
+typedef struct {
+    uint8_t refreshMin;         // refresh every 2 minutes by default
+    uint8_t clockStyle;         // clock style (0=default, 1=khmer, 2=retro)
+    bool    showBattPct;
+    bool    showHum;
+    bool    showTemp;
+    bool    showRssi;
+} display_settings_t;
+
+typedef struct {
     uint8_t quietStart;         // quiet hours start (12 AM)
     uint8_t quietEnd;           // quiet hours end (5 AM)
     bool    quietEnabled;       // quiet hours disable/enable
     bool    powerSave;          // power saving mode (WiFi off, web off)
-
-    // alarm options
-    alarm_t alarm[5];           // 5 alarm settings
-} clock_settings_t;
-
-typedef struct {
-    bool    showHum;
-    bool    showTemp;
-    bool    showRssi;
-    bool    showBattPct;
-    uint8_t clockStyle;         // clock style (0=default, 1=khmer, 2=retro)
-} display_settings_t;
+} device_settings_t;
 
 typedef struct {
     wifi_t wifi[2];             // support 2 WiFi networks for backup
@@ -80,6 +84,7 @@ typedef struct {
 typedef struct {
     wifi_settings_t wifi;
     clock_settings_t clock;
+    device_settings_t device;
     display_settings_t display;
 } config_t;
 
@@ -103,11 +108,6 @@ extern float g_humidity;
 extern uint8_t g_batteryPct;
 extern bool    g_isVbusConnected;
 extern bool    g_powerSaveMode;
-
-// ===== ALARM STATE =====
-extern bool    g_alarmTriggered;    // alarm just triggered
-extern bool    g_alarmSettingMode;  // in alarm set mode
-extern uint8_t g_alarmEditIdx;      // 0=hour, 1=minute
 
 // ===== SYSTEM STATE =====
 extern time_t lastRefreshEpoch;

@@ -149,7 +149,7 @@ void drawDisplay() {
   rightX -= ITEM_SPACING;
 
   // will only show battery % if power saving mode is on
-  if (cfg.clock.powerSave) {
+  if (cfg.device.powerSave) {
     if (cfg.display.showBattPct) {
       rightX -= BATT_PCT_W;
       gfx.setTextColor(EPD_BLACK);
@@ -200,7 +200,7 @@ void drawDisplay() {
   const String utcStr = String("UTC") +
     (cfg.clock.utcOffset >= 0 ? "+" : "") +
     String((int) cfg.clock.utcOffset);
-  const String refreshStr = String(cfg.clock.refreshMin) + "min";
+  const String refreshStr = String(cfg.display.refreshMin) + "min";
   String host = String(cfg.wifi.hostname);
   if (host.length() > 12) host = host.substring(0, 11) + "~";
 
@@ -289,7 +289,7 @@ void showSetupScreen(uint8_t mode) {
     break;
   }
   gfx.setCursor(8, 140);
-  gfx.print("Access config at http://eink-clock.local");
+  gfx.print("Access config at http://eink.local");
   gfx.display();
 }
 

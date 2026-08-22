@@ -4,19 +4,6 @@
 
 config_t cfg;
 
-static const char* styleToStr(uint8_t s) {
-    switch (s) {
-    case CS_KHMER: return "khmer";
-    case CS_RETRO: return "retro";
-    default:       return "default";
-    }
-}
-static uint8_t strToStyle(const char* s) {
-    if (!strcmp(s, "khmer")) return CS_KHMER;
-    if (!strcmp(s, "retro")) return CS_RETRO;
-    return CS_DEFAULT;
-}
-
 static const char DEFAULT_CONFIG_JSON[] PROGMEM = R"json(
 {
     "fsVersion": 1,
@@ -30,32 +17,209 @@ static const char DEFAULT_CONFIG_JSON[] PROGMEM = R"json(
     "clock": {
         "hour12": true,
         "utcOffset": 7,
-        "refreshMin": 2,
         "ntpSyncDays": 7,
-        "ntpReSyncDays": 1,
-        "quietStart": 0,
-        "quietEnd": 5,
-        "quietEnabled": false,
-        "powerSave": false
+        "ntpReSyncDays": 1
     },
     "display": {
-        "style": "khmer",
+        "refreshMin": 2,
+        "style": "default",
         "showTemp": true,
         "showHum": true,
         "showBattPct": false,
         "showRssi": true
     },
-    "alarms": [
-        {
-            "name": "Work",
-            "hour": 7,
-            "minute": 0,
-            "enabled": true,
-            "snooze": { "minutes": 5, "repeat": 2, "sound": 1 }
-        }
-    ]
+    "device": {
+        "quietStart": 0,
+        "quietEnd": 5,
+        "quietEnabled": false,
+        "powerSave": false
+    },
+    "alarms": []
 }
 )json";
+
+static const char* styleToStr(uint8_t s) {
+    switch (s) {
+    case CS_KHMER: return "khmer";
+    case CS_RETRO: return "retro";
+    default:       return "default";
+    }
+}
+static uint8_t strToStyle(const char* s) {
+    if (!strcmp(s, "khmer")) return CS_KHMER;
+    if (!strcmp(s, "retro")) return CS_RETRO;
+    return CS_DEFAULT;
+}
+
+static bool copyString(JsonObject src, const char* key, JsonObject dst) {
+    if (src[key].is<const char*>()) {
+        dst[key] = src[key];
+        return true;
+    }
+    return false;
+}
+
+static bool migrate_v0_to_v1(JsonDocument& oldDoc, JsonDocument& newDoc) {
+    JsonObject old = oldDoc.as<JsonObject>();
+    JsonObject root = newDoc.as<JsonObject>();
+    // ---------------------------------------------------------
+    // wifi
+    // ---------------------------------------------------------
+    JsonObject wifi = root["wifi"];
+    JsonArray networks = wifi["networks"];
+    if (old["ssid"].is<const char*>())
+        networks[0]["ssid"] = old["ssid"];
+    if (old["password"].is<const char*>())
+        networks[0]["password"] = old["password"];
+    if (old["hostname"].is<const char*>())
+        wifi["hostname"] = old["hostname"];
+    // ---------------------------------------------------------
+    // clock
+    // ---------------------------------------------------------
+    JsonObject clock = root["clock"];
+    if (!old["hour12"].isNull())
+        clock["hour12"] = old["hour12"];
+    if (!old["utcOffset"].isNull())
+        clock["utcOffset"] = old["utcOffset"];
+    if (!old["ntpSyncDays"].isNull())
+        clock["ntpSyncDays"] = old["ntpSyncDays"];
+    if (!old["ntpReSyncDays"].isNull())
+        clock["ntpReSyncDays"] = old["ntpReSyncDays"];
+    // ---------------------------------------------------------
+    // display
+    // ---------------------------------------------------------
+    JsonObject display = root["display"];
+    if (!old["refreshMin"].isNull())
+        display["refreshMin"] = old["refreshMin"];
+    if (!old["showTemp"].isNull())
+        display["showTemp"] = old["showTemp"];
+    if (!old["showHum"].isNull())
+        display["showHum"] = old["showHum"];
+    if (!old["showBattPct"].isNull())
+        display["showBattPct"] = old["showBattPct"];
+    if (!old["showRSSI"].isNull())
+        display["showRssi"] = old["showRSSI"];
+    // ---------------------------------------------------------
+    // device
+    // ---------------------------------------------------------
+    JsonObject device = root["device"];
+    if (!old["quietStart"].isNull())
+        device["quietStart"] = old["quietStart"];
+    if (!old["quietEnd"].isNull())
+        device["quietEnd"] = old["quietEnd"];
+    if (!old["quietEnabled"].isNull())
+        device["quietEnabled"] = old["quietEnabled"];
+    if (!old["powerSave"].isNull())
+        device["powerSave"] = old["powerSave"];
+    // ---------------------------------------------------------
+    // Set new version
+    // ---------------------------------------------------------
+    root["fsVersion"] = CONFIG_FS_VERSION;
+    return true;
+}
+
+static bool migrate_v1_to_v2(
+    JsonDocument& oldDoc,
+    JsonDocument& newDoc) {
+    JsonObject old = oldDoc.as<JsonObject>();
+    JsonObject root = newDoc.as<JsonObject>();
+
+    // Only code for things that changed in v2.
+
+    // Example:
+    // v2 added display.brightness.
+    //
+    // If v1 had no brightness, leave the value from
+    // DEFAULT_CONFIG_JSON untouched.
+
+    // If v2 renamed something:
+    // newDoc["display"]["newName"] =
+    //     oldDoc["display"]["oldName"];
+
+    root["fsVersion"] = 2;
+
+    return true;
+}
+
+static bool migrate_config_file() {
+    File f = LittleFS.open(CONFIG_FILE, "r");
+
+    if (!f) {
+        Serial0.println("Failed to open config");
+        return false;
+    }
+
+    JsonDocument oldDoc;
+    DeserializationError err = deserializeJson(oldDoc, f);
+    f.close();
+
+    if (err) {
+        Serial0.printf("Config parse failed: %s\n", err.c_str());
+        return false;
+    }
+    // check fs format version
+    JsonVariant version = oldDoc["fsVersion"];
+    uint32_t oldVersion = 0;
+    if (version.isNull()) {
+        // Old format has no fsVersion.Therefore it is version 0.
+        oldVersion = 0;
+        Serial0.println("No fsVersion found, assuming config version 0");
+    }
+    else {
+        oldVersion = version | 0;
+        Serial0.printf("Config version: %lu\n", (unsigned long) oldVersion);
+    }
+    if (oldVersion == CONFIG_FS_VERSION) {
+        Serial0.println("Config already at current version");
+        return true;
+    }
+    JsonDocument newDoc;
+    err = deserializeJson(newDoc, DEFAULT_CONFIG_JSON);
+    if (err) {
+        Serial0.printf("Failed to parse default config: %s\n", err.c_str());
+        return false;
+    }
+    // Migrate old configuration
+    while (oldVersion < CONFIG_FS_VERSION) {
+        bool success = false;
+        switch (oldVersion) {
+        case 0:
+            success = migrate_v0_to_v1(oldDoc, newDoc);
+            break;
+        case 1:
+            // success = migrate_v1_to_v2(oldDoc, newDoc);
+            break;
+        default:
+            Serial0.printf(
+                "Unsupported config version: %lu\n",
+                (unsigned long) oldVersion
+            );
+            return false;
+        }
+        if (!success)
+            return false;
+        oldVersion++;
+    }
+
+    //Write NEW configuration
+    File out = LittleFS.open(CONFIG_FILE, "w");
+    if (!out) {
+        Serial0.println("Failed to open config for writing");
+        return false;
+    }
+
+    // serializeJsonPretty(newDoc, Serial0);
+    Serial0.println();
+    size_t written = serializeJson(newDoc, out);
+    out.close();
+
+    if (written == 0) {
+        Serial0.println("Failed to write migrated config");
+        return false;
+    }
+    Serial0.println("Config migration successful");
+    return true;
+}
 
 void create_default_config() {
     File f = LittleFS.open(CONFIG_FILE, "w");
@@ -80,19 +244,20 @@ void load_default_config(config_t& cfg) {
 
     cfg.clock.hour12 = true;
     cfg.clock.utcOffset = 7;
-    cfg.clock.refreshMin = 2;
     cfg.clock.ntpSyncDays = 7;
     cfg.clock.ntpReSyncDays = 1;
-    cfg.clock.quietStart = 0;
-    cfg.clock.quietEnd = 5;
-    cfg.clock.quietEnabled = false;
-    cfg.clock.powerSave = false;
 
+    cfg.device.quietStart = 0;
+    cfg.device.quietEnd = 5;
+    cfg.device.quietEnabled = false;
+    cfg.device.powerSave = false;
+
+    cfg.display.refreshMin = 3;
     cfg.display.showTemp = true;
     cfg.display.showHum = true;
     cfg.display.showBattPct = false;
     cfg.display.showRssi = true;
-    cfg.display.clockStyle = CS_KHMER;
+    cfg.display.clockStyle = CS_DEFAULT;
 
     alarm_t& a = cfg.clock.alarm[0];
     strlcpy(a.name, "Work", sizeof(a.name));
@@ -123,9 +288,10 @@ void load_user_config(config_t& cfg) {
         Serial0.printf("Config parse failed: %s, using defaults\n", err.c_str());
         return;
     }
-    Serial0.println("Parsed JSON:");
-    serializeJsonPretty(doc, Serial);
-    Serial0.println();
+    // Serial0.println("Parsed JSON:");
+    // serializeJsonPretty(doc, Serial);
+    // Serial0.println();
+    Serial0.println("Json config version: " + String(doc["fsVersion"] | 0));
 
     if (doc["wifi"]["hostname"].is<const char*>())
         strlcpy(cfg.wifi.hostname, doc["wifi"]["hostname"], sizeof(cfg.wifi.hostname));
@@ -147,17 +313,14 @@ void load_user_config(config_t& cfg) {
     if (!clk.isNull()) {
         cfg.clock.hour12 = clk["hour12"] | cfg.clock.hour12;
         cfg.clock.utcOffset = clk["utcOffset"] | cfg.clock.utcOffset;
-        cfg.clock.refreshMin = clk["refreshMin"] | cfg.clock.refreshMin;
         cfg.clock.ntpSyncDays = clk["ntpSyncDays"] | cfg.clock.ntpSyncDays;
         cfg.clock.ntpReSyncDays = clk["ntpReSyncDays"] | cfg.clock.ntpReSyncDays;
-        cfg.clock.quietStart = clk["quietStart"] | cfg.clock.quietStart;
-        cfg.clock.quietEnd = clk["quietEnd"] | cfg.clock.quietEnd;
-        cfg.clock.quietEnabled = clk["quietEnabled"] | cfg.clock.quietEnabled;
-        cfg.clock.powerSave = clk["powerSave"] | cfg.clock.powerSave;
+
     }
 
     JsonObject disp = doc["display"];
     if (!disp.isNull()) {
+        cfg.display.refreshMin = disp["refreshMin"] | cfg.display.refreshMin;
         cfg.display.showTemp = disp["showTemp"] | cfg.display.showTemp;
         cfg.display.showHum = disp["showHum"] | cfg.display.showHum;
         cfg.display.showBattPct = disp["showBattPct"] | cfg.display.showBattPct;
@@ -166,11 +329,19 @@ void load_user_config(config_t& cfg) {
             cfg.display.clockStyle = strToStyle(disp["style"]);
     }
 
+    JsonObject dev = doc["device"];
+    if (!dev.isNull()) {
+        cfg.device.quietStart = dev["quietStart"] | cfg.device.quietStart;
+        cfg.device.quietEnd = dev["quietEnd"] | cfg.device.quietEnd;
+        cfg.device.quietEnabled = dev["quietEnabled"] | cfg.device.quietEnabled;
+        cfg.device.powerSave = dev["powerSave"] | cfg.device.powerSave;
+    }
+
     JsonArray alarms = doc["alarms"];
     if (!alarms.isNull()) {
         uint8_t i = 0;
         for (JsonObject a : alarms) {
-            if (i >= 5) break;
+            if (i >= MAX_ALARMS) break;
             alarm_t& al = cfg.clock.alarm[i];
             if (a["name"].is<const char*>())
                 strlcpy(al.name, a["name"], sizeof(al.name));
@@ -205,23 +376,26 @@ void build_config_json(JsonDocument& doc) {
     JsonObject clk = doc["clock"].to<JsonObject>();
     clk["hour12"] = cfg.clock.hour12;
     clk["utcOffset"] = cfg.clock.utcOffset;
-    clk["refreshMin"] = cfg.clock.refreshMin;
     clk["ntpSyncDays"] = cfg.clock.ntpSyncDays;
     clk["ntpReSyncDays"] = cfg.clock.ntpReSyncDays;
-    clk["quietStart"] = cfg.clock.quietStart;
-    clk["quietEnd"] = cfg.clock.quietEnd;
-    clk["quietEnabled"] = cfg.clock.quietEnabled;
-    clk["powerSave"] = cfg.clock.powerSave;
+
 
     JsonObject disp = doc["display"].to<JsonObject>();
+    disp["refreshMin"] = cfg.display.refreshMin;
     disp["style"] = styleToStr(cfg.display.clockStyle);
     disp["showTemp"] = cfg.display.showTemp;
     disp["showHum"] = cfg.display.showHum;
     disp["showBattPct"] = cfg.display.showBattPct;
     disp["showRssi"] = cfg.display.showRssi;
 
+    JsonObject dev = doc["device"].to<JsonObject>();
+    dev["quietStart"] = cfg.device.quietStart;
+    dev["quietEnd"] = cfg.device.quietEnd;
+    dev["quietEnabled"] = cfg.device.quietEnabled;
+    dev["powerSave"] = cfg.device.powerSave;
+
     JsonArray alarms = doc["alarms"].to<JsonArray>();
-    for (uint8_t i = 0; i < 5; i++) {
+    for (uint8_t i = 0; i < MAX_ALARMS; i++) {
         alarm_t& al = cfg.clock.alarm[i];
         JsonObject a = alarms.add<JsonObject>();
         a["name"] = al.name;
@@ -246,8 +420,8 @@ void save_config() {
     JsonDocument doc;
     build_config_json(doc);
 
-    Serial0.println("json config updated:");
-    serializeJsonPretty(doc, Serial0);
+    Serial0.println("json config updated!");
+    // serializeJsonPretty(doc, Serial0);
 
     serializeJson(doc, f);
     f.close();
@@ -269,8 +443,15 @@ void factory_reset() {
 void erase_config() {
     if (LittleFS.exists(CONFIG_FILE)) {
         LittleFS.remove(CONFIG_FILE);
-        Serial0.println("Config erased");
+        Serial0.println("Config erased!");
     }
+    LittleFS.format();
+    Serial0.println("FS formatted!");
+}
+
+void format_fs() {
+    if (LittleFS.format())
+        Serial0.println("FS formatted!");
 }
 
 void init_fs() {
@@ -284,6 +465,7 @@ void init_fs() {
         Serial0.println("Config file not found, creating default config");
         create_default_config();
     }
+    else migrate_config_file();
 
     load_default_config(cfg);
     load_user_config(cfg);

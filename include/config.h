@@ -13,6 +13,7 @@
 #define DEBUG
 #define SERIAL_BUF_SIZE 4096
 #define LOG_BUF_SIZE 4096
+
 // ============================================================================
 // CONFIG — edit these defaults
 // ============================================================================
@@ -29,7 +30,7 @@
 #define WEB_SPAWN_TIMEOUT_MS 90000UL  // 1.5 minutes to configure before sleeping
 #define WEB_SPAWN_SETUP_MODE_MS 900000UL  // 15 minutes in setup mode before sleeping
 
-#define MAX_ALARMS 5
+#define MAX_ALARMS 3
 // ============================================================================
 // PINS
 // ============================================================================

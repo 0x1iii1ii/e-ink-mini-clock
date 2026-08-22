@@ -24,7 +24,6 @@ static bool     _updateChecking = false;
 static bool     _updateReady = false;
 
 // ── Static file helper ─────────────────────────────────────
-
 struct GzResource {
   const char* path;
   const unsigned char* data;
@@ -73,7 +72,6 @@ void addCORSHeaders() {
 // ── GET /config ────────────────────────────────────────────
 // Returns full device config as JSON so the portal can
 // pre-populate all fields on load.
-
 void handleConfig() {
   addCORSHeaders();
 
@@ -82,12 +80,13 @@ void handleConfig() {
 
   String json;
   serializeJson(doc, json);
+  // serializeJsonPretty(doc, Serial0);
+
   server.send(200, "application/json", json);
 }
 
 // ── POST /ota-url ─────────────────────────────────────────
 // Triggers OTA update from a given URL (called from the Update tab)
-
 void handleOtaUrl() {
   addCORSHeaders();
 
@@ -177,7 +176,6 @@ void handleCheckUpdate() {
 // ── GET /status ────────────────────────────────────────────
 // Polled every few seconds by the portal to update the
 // live header stats (time, RSSI, uptime, heap, NTP).
-
 void handleStatus() {
   addCORSHeaders();
 
@@ -240,7 +238,6 @@ void handleStatus() {
 // ── GET /scan ──────────────────────────────────────────────
 // Returns visible WiFi networks; called by the portal's
 // network list on load (and on manual rescan).
-
 void handleScan() {
   addCORSHeaders();
   int n = WiFi.scanNetworks();
@@ -259,24 +256,17 @@ void handleScan() {
 }
 
 // ── POST /save-clock ───────────────────────────────────────
-// Saves clock/display preferences from the Clock tab.
-
+// Saves clock preferences from the Clock tab.
 void handleSaveClock() {
   addCORSHeaders();
 
   // value inputs
   if (server.hasArg("utcOffset"))
     cfg.clock.utcOffset = (int8_t) server.arg("utcOffset").toInt();
-  if (server.hasArg("refreshMin"))
-    cfg.clock.refreshMin = (uint8_t) constrain(server.arg("refreshMin").toInt(), 1, 60);
   if (server.hasArg("ntpSyncDays"))
     cfg.clock.ntpSyncDays = (uint8_t) constrain(server.arg("ntpSyncDays").toInt(), 1, 7);
   if (server.hasArg("ntpReSyncDays"))
     cfg.clock.ntpReSyncDays = (uint8_t) constrain(server.arg("ntpReSyncDays").toInt(), 1, 3); // limit to 3 days 
-  if (server.hasArg("quietStart"))
-    cfg.clock.quietStart = (uint8_t) constrain(server.arg("quietStart").toInt(), 0, 23);
-  if (server.hasArg("quietEnd"))
-    cfg.clock.quietEnd = (uint8_t) constrain(server.arg("quietEnd").toInt(), 0, 23);
 
   // Alarm settings
   if (server.hasArg("alarmHour"))
@@ -286,13 +276,66 @@ void handleSaveClock() {
 
   // check boxes
   cfg.clock.hour12 = server.hasArg("hour12");
-  cfg.clock.quietEnabled = server.hasArg("quietEnabled");
-  cfg.clock.powerSave = server.hasArg("powerSave");
+  cfg.clock.alarm[0].enabled = server.hasArg("alarmEnabled");
+
+  save_config();
+  server.send(200, "application/json", "{\"ok\":true}");
+
+  delay(2000);
+  ESP.restart();
+}
+
+// ── POST /save-display ───────────────────────────────────────
+// Saves display preferences from the Display tab.
+void handleSaveDisplay() {
+  addCORSHeaders();
+
+  // Refresh interval
+  if (server.hasArg("refreshMin"))
+    cfg.display.refreshMin = (uint8_t) constrain(server.arg("refreshMin").toInt(), 1, 60);
+
+  // Clock style
+  if (server.hasArg("clockStyle")) {
+    String style = server.arg("clockStyle");
+
+    if (style == "default") {
+      cfg.display.clockStyle = CS_DEFAULT;
+    }
+    else if (style == "khmer") {
+      cfg.display.clockStyle = CS_KHMER;
+    }
+    else if (style == "retro") {
+      cfg.display.clockStyle = CS_RETRO;
+    }
+  }
+
+  // Checkboxes
   cfg.display.showBattPct = server.hasArg("showBattPct");
   cfg.display.showHum = server.hasArg("showHum");
   cfg.display.showTemp = server.hasArg("showTemp");
   cfg.display.showRssi = server.hasArg("showRSSI");
-  cfg.clock.alarm[0].enabled = server.hasArg("alarmEnabled");
+
+  save_config();
+  server.send(200, "application/json", "{\"ok\":true}");
+
+  delay(2000);
+  ESP.restart();
+}
+
+// ── POST /save-device ───────────────────────────────────────
+// Saves device preferences from the Device tab.
+void handleSaveDevice() {
+  addCORSHeaders();
+
+  // value inputs
+  if (server.hasArg("quietStart"))
+    cfg.device.quietStart = (uint8_t) constrain(server.arg("quietStart").toInt(), 0, 23);
+  if (server.hasArg("quietEnd"))
+    cfg.device.quietEnd = (uint8_t) constrain(server.arg("quietEnd").toInt(), 0, 23);
+
+  // check boxes
+  cfg.device.quietEnabled = server.hasArg("quietEnabled");
+  cfg.device.powerSave = server.hasArg("powerSave");
 
   save_config();
   server.send(200, "application/json", "{\"ok\":true}");
@@ -303,7 +346,6 @@ void handleSaveClock() {
 
 // ── POST /save-wifi ────────────────────────────────────────
 // Saves WiFi credentials then reboots into STA mode.
-
 void handleSaveWifi() {
   addCORSHeaders();
 
@@ -319,7 +361,6 @@ void handleSaveWifi() {
 }
 
 // ── POST /save-hostname ────────────────────────────────────
-
 void handleSaveHostname() {
   addCORSHeaders();
   if (server.hasArg("hostnameVal"))
@@ -328,10 +369,57 @@ void handleSaveHostname() {
   server.send(200, "application/json", "{\"ok\":true}");
 }
 
+// ── POST /save-alarms ──────────────────────────────────────
+void handleSaveAlarms() {
+  addCORSHeaders();
+
+  if (!server.hasArg("plain")) {
+    server.send(400, "application/json", "{\"ok\":false,\"msg\":\"No body\"}");
+    return;
+  }
+
+  JsonDocument doc;
+  DeserializationError err = deserializeJson(doc, server.arg("plain"));
+  if (err) {
+    server.send(400, "application/json", "{\"ok\":false,\"msg\":\"Bad JSON\"}");
+    return;
+  }
+
+  JsonArray alarms = doc["alarms"];
+  if (alarms.isNull()) {
+    server.send(400, "application/json", "{\"ok\":false,\"msg\":\"No alarms field\"}");
+    return;
+  }
+
+  uint8_t i = 0;
+  for (JsonObject a : alarms) {
+    if (i >= 5) break;
+    alarm_t& al = cfg.clock.alarm[i];
+    if (a["name"].is<const char*>())
+      strlcpy(al.name, a["name"], sizeof(al.name));
+    al.hour = a["hour"] | al.hour;
+    al.minute = a["minute"] | al.minute;
+    al.enabled = a["enabled"] | al.enabled;
+    al.repeatDays = a["repeatDays"] | al.repeatDays;
+
+    JsonObject sn = a["snooze"];
+    if (!sn.isNull()) {
+      al.snooze.minutes = sn["minutes"] | al.snooze.minutes;
+      al.snooze.repeat = sn["repeat"] | al.snooze.repeat;
+      al.snooze.sound = sn["sound"] | al.snooze.sound;
+    }
+    i++;
+  }
+  // Disable any leftover slots not sent
+  for (; i < 5; i++) cfg.clock.alarm[i].enabled = false;
+
+  save_config();
+  server.send(200, "application/json", "{\"ok\":true}");
+}
+
 // ── POST /action ───────────────────────────────────────────
 // Single endpoint for all quick-action buttons.
 // ?cmd = refresh | sync | clear | restart | factory
-
 void handleAction() {
   addCORSHeaders();
 
@@ -359,11 +447,16 @@ void handleAction() {
 
   }
   else if (cmd == "factory") {
-    server.send(200, "application/json", "{\"ok\":true,\"msg\":\"Factory reset. Restarting...\"}");
+    server.send(200, "application/json", "{\"ok\":true,\"msg\":\"User reset. Restarting...\"}");
     erase_config();
     delay(500);
     ESP.restart();
-
+  }
+  else if (cmd == "user_factory") {
+    server.send(200, "application/json", "{\"ok\":true,\"msg\":\"Factory reset. Restarting...\"}");
+    format_fs();
+    delay(500);
+    ESP.restart();
   }
   else {
     server.send(400, "application/json", "{\"ok\":false,\"msg\":\"Unknown command.\"}");
@@ -371,14 +464,12 @@ void handleAction() {
 }
 
 // ── Root ───────────────────────────────────────────────────
-
 void handleRoot() {
   if (!handleFileRead("/"))
     server.send(404, "text/plain", "Portal not found — upload /web/index.html via LittleFS");
 }
 
 // ── web_init ───────────────────────────────────────────────
-
 void web_init() {
   _bootMs = millis();
 
@@ -395,15 +486,14 @@ void web_init() {
   server.on("/save-clock", HTTP_POST, handleSaveClock);
   server.on("/save-wifi", HTTP_POST, handleSaveWifi);
   server.on("/save-hostname", HTTP_POST, handleSaveHostname);
-
+  server.on("/save-display", HTTP_POST, handleSaveDisplay);
+  server.on("/save-device", HTTP_POST, handleSaveDevice);
   server.on("/action", HTTP_POST, handleAction);
-
-  // Serial log streaming (SSE)
-  // server.on("/api/log", HTTP_GET, []() { server.send(200, "text/plain", weblog.getBuffer()); });
-  // server.on("/api/log/clear", HTTP_POST, []() { weblog.clear(); server.send(200, "text/plain", "ok"); });
 
   server.on("/ota-url", HTTP_POST, handleOtaUrl);
   server.on("/check-update", HTTP_GET, handleCheckUpdate);
+  server.on("/save-alarms", HTTP_POST, handleSaveAlarms);
+  server.on("/save-alarms", HTTP_OPTIONS, []() { addCORSHeaders(); server.send(204); });
 
   // OPTIONS pre-flight for browsers
   server.on("/save-clock", HTTP_OPTIONS, []() { addCORSHeaders(); server.send(204); });
@@ -423,14 +513,12 @@ void web_init() {
 }
 
 // ── web_loop ───────────────────────────────────────────────
-
 void web_loop() {
   server.handleClient();
   doVersionFetch();
 }
 
 // ── AP / captive portal (setup mode) ──────────────────────
-
 void startWiFiPortal() {
   WiFi.mode(WIFI_OFF);
   delay(1000);

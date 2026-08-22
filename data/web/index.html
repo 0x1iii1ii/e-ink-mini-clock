@@ -19,10 +19,10 @@
       <div class="portal-header">
         <div class="brand-icon">🕒</div>
         <div class="brand-text">
-          <h1>e-ink Mini Clock - Web Dasboard</h1>
+          <h1>e-ink Mini Clock V2 - Web Dasboard</h1>
           <p>
-            Rev.V2 • FW v<span id="fwVerVal">-</span> •
-            <span id="ipAddrVal">-</span>
+            Rev.V2 • FW v<span id="fwVerValTop">-</span> •
+            <span id="ipAddrValTop">-</span>
           </p>
         </div>
         <div class="header-stats">
@@ -220,6 +220,7 @@
             <div class="card">
               <div class="card-title">
                 <h2>Alarms</h2>
+                (features not yet available)
                 <span class="card-title-tag" id="alarmCount">0 / 3</span>
               </div>
 
@@ -230,11 +231,12 @@
                 class="btn-action primary"
                 id="addAlarmBtn"
                 style="width: 100%; margin-bottom: 16px"
+                disabled
               >
                 + Add Alarm
               </button>
 
-              <button type="button" class="btn-save" id="saveAlarmsBtn">
+              <button type="button" class="btn-save" id="saveAlarmsBtn" disabled>
                 Save Alarms
               </button>
             </div>
@@ -376,11 +378,20 @@
                     placeholder="5"
                   />
                 </div>
-                <div class="toggle-field">
+              <div class="field">
+                <label>Clock Styles</label>
+                <select
+                  id="clock-style" name="clockStyle">
+                  <option value="default">Default</option>
+                  <option value="khmer">Khmer</option>
+                  <option value="retro">Retro</option>
+                </select>
+              </div>        
+              <div class="toggle-field">
                   <div>
                     <div class="toggle-label">Show Battery Percentage</div>
                     <div class="toggle-sub">
-                      Show battery percentage next to battery icon
+                      Show battery percentage next to battery icon (will only show if power saving mode is on)
                     </div>
                   </div>
                   <label class="switch"
@@ -585,7 +596,7 @@
                 <h2>Power Saving</h2>
                 <span class="card-title-tag">Power Settings</span>
               </div>
-              <form id="clockForm" method="POST" action="/save-clock">
+              <form id="deviceForm" method="POST" action="/save-device">
                 <div class="field">
                   <label>Sleep Hours (24-hour format)</label>
                   <div class="sleep-grid">
@@ -674,9 +685,9 @@
                 </button>
                 <button
                   class="btn-action"
-                  onclick="doAction('info', 'Open serial monitor in browser?')"
+                  onclick="doAction('user_factory', 'Factory reset now? This will erase everything!?')"
                 >
-                  Serial Log
+                  Factory Reset
                 </button>
                 <button
                   class="btn-action danger"
@@ -892,7 +903,7 @@
                 <div class="info-row">
                   <span class="info-key">Display</span>
                   <span class="info-val" id="disDrvVal">
-                    e-Paper 2.66&quot; B/W/R/Y
+                    e-Paper 2.66&quot; B/W/R
                   </span>
                 </div>
 

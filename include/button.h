@@ -8,4 +8,7 @@
 
 static constexpr uint32_t PORTAL_HOLD_MS = 1000;            // hold GPIO0 to enter portal
 
-bool WakeButtonHeld();
+// bool WakeButtonHeld();
+// void handleAlarmConfig();
+void startUpSound();
+void beep(int freq, int duration);
