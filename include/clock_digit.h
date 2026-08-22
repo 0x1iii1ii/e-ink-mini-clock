@@ -1,11 +1,8 @@
 /**
- * epd_font_big.h  —  Large rectangle segment font for e-ink clock
+ * clock_digit.h  —  Large rectangle segment font for e-ink clock
  *
  * Each digit is drawn as thick filled rectangles mimicking a
  * 7-segment style but with solid blocks — looks great on e-ink.
- *
- * Digit cell: 36 wide × 56 tall (including 2px gap on right)
- * Colon cell: 12 wide × 56 tall
  *
  * Segment layout per digit (like 7-segment):
  *
@@ -15,24 +12,27 @@
  *   E     C
  *   [─ D ─]
  *
- * Thickness: 6px  Segment length: 24px
+ * All sizes are derived from the clock area, which itself is
+ * derived from EPD_266's EPD_WIDTH / EPD_HEIGHT — so this still
+ * auto-fits if the panel size ever changes again.
  */
 
-#ifndef EPD_FONT_BIG_H
-#define EPD_FONT_BIG_H
+#ifndef CLOCK_DIGIT_H
+#define CLOCK_DIGIT_H
 
 #include "epd_gfx.h"
 
-#define LINE_TOP_BAR 20
-#define LINE_BOTTOM_BAR 170
+ // ── Top/bottom info bar positions (296x152 panel) ───────────
+#define LINE_TOP_BAR     16                    // below the top status row
+#define LINE_BOTTOM_BAR  (EPD_HEIGHT - 14)      // above the bottom status row
 
- // ── Clock area constants (must match drawDisplay dividers) ──
+// ── Clock area constants (must match drawDisplay dividers) ──
 #define CLOCK_Y_TOP         LINE_TOP_BAR            // first pixel below top dividers
 #define CLOCK_Y_BOT         (LINE_BOTTOM_BAR + 1)   // first pixel of bottom dividers
 #define CLOCK_MARGIN        3                       // px margin inside the clock area
 
 // ── Derived font dimensions (auto-fit to area) ─────────────
-#define BF_H   (CLOCK_Y_BOT - CLOCK_Y_TOP - CLOCK_MARGIN * 2)   // 139 digit height
+#define BF_H   (CLOCK_Y_BOT - CLOCK_Y_TOP - CLOCK_MARGIN * 2)   // digit height
 #define BF_W   (BF_H * 55 / 100)                                // digit width, 55% of height keeps a natural tall/narrow 7-seg proportion
 #define BF_T   (BF_H * 14 / 100)                                // segment thickness, 14% of height scales with size
 #define BF_GAP  6                                               // pixels between digits
@@ -61,8 +61,8 @@ public:
     void drawTime(int h, int m, UBYTE color, uint8_t style = 0) {
         int totalW = 4 * (BF_W + BF_GAP) + BF_COLON;
 
-        // init position by centre horizontally in 360px
-        int x = (360 - totalW) / 2;
+        // init position by centre horizontally on the panel
+        int x = (EPD_WIDTH - totalW) / 2;
         int y = CLOCK_Y_TOP + CLOCK_MARGIN;
 
         // draw each digit
@@ -82,7 +82,6 @@ private:
 
     // ── SHARP style: solid filled rects ───────────────────
     void drawDigitSharp(int x, int y, uint8_t d, UBYTE col) {
-        // int vsg = (BF_T / 2); // vert segment gab
         int sh = (BF_H / 2); // vert segment inner height
         int my = BF_H / 2 - BF_T / 2; // middle y offset
         int rx = BF_W - BF_T; // right column x offset

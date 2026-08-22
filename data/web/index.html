@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>ESP ePaper Clock · Portal</title>
+    <title>e-ink Mini Clock · Web Portal</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link
       href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap"
@@ -17,10 +17,13 @@
     <div class="wrap">
       <!-- Header bar -->
       <div class="portal-header">
-        <div class="brand-icon">🔰</div>
+        <div class="brand-icon">🕒</div>
         <div class="brand-text">
-          <h1>ePaper Desk Clock - Web Dasboard</h1>
-          <p>// ESP32-C3 · SSD1680 · 2.66&quot; Tri-Color</p>
+          <h1>e-ink Mini Clock V2 - Web Dasboard</h1>
+          <p>
+            Rev.V2 • FW v<span id="fwVerValTop">-</span> •
+            <span id="ipAddrValTop">-</span>
+          </p>
         </div>
         <div class="header-stats">
           <div class="hstat">
@@ -100,14 +103,14 @@
           <button class="tab-btn active" data-tab="clock">
             <span class="tb-icon">🕒</span>Clock
           </button>
+          <button class="tab-btn" data-tab="display">
+            <span class="tb-icon">🖥️</span>Display
+          </button>
           <button class="tab-btn" data-tab="wifi">
             <span class="tb-icon">🛜</span>WiFi
           </button>
           <button class="tab-btn" data-tab="device">
-            <span class="tb-icon">🌐</span>Hostname
-          </button>
-          <button class="tab-btn" data-tab="actions">
-            <span class="tb-icon">⚙️</span>Controls
+            <span class="tb-icon">⚙️</span>Device
           </button>
           <button class="tab-btn" data-tab="ota">
             <span class="tb-icon">🔄</span>OTA
@@ -153,94 +156,48 @@
             <div class="card">
               <div class="card-title">
                 <h2>Clock Settings</h2>
-                <span class="card-title-tag">NTP · Display</span>
+                <span class="card-title-tag">NTP · Clock</span>
               </div>
               <form id="clockForm" method="POST" action="/save-clock">
-                <div class="field-row">
-                  <div class="field">
-                    <label for="utcOffset">UTC Offset (hours)</label>
-                    <input
-                      type="number"
-                      id="utcOffset"
-                      name="utcOffset"
-                      min="-12"
-                      max="14"
-                      value="7"
-                      placeholder="+7"
-                    />
-                  </div>
-                  <div class="field">
-                    <label for="refreshMin"
-                      >Display Refresh Interval (minutes)</label
-                    >
-                    <input
-                      type="number"
-                      id="refreshMin"
-                      name="refreshMin"
-                      min="1"
-                      max="60"
-                      value="5"
-                      placeholder="5"
-                    />
-                  </div>
-                  <div class="field">
-                    <label for="ntpSyncDays">NTP Sync Interval (days)</label>
-                    <input
-                      type="number"
-                      id="ntpSyncDays"
-                      name="ntpSyncDays"
-                      min="1"
-                      max="7"
-                      value="7"
-                      placeholder="7"
-                    />
-                  </div>
-                  <div class="field">
-                    <label for="ntpReSyncDays"
-                      >NTP Sync Retry Interval (days)</label
-                    >
-                    <input
-                      type="number"
-                      id="ntpReSyncDays"
-                      name="ntpReSyncDays"
-                      min="1"
-                      max="3"
-                      value="1"
-                      placeholder="1"
-                    />
-                  </div>
+                <div class="field">
+                  <label for="utcOffset">UTC Offset (hours)</label>
+                  <input
+                    type="number"
+                    id="utcOffset"
+                    name="utcOffset"
+                    min="-12"
+                    max="14"
+                    value="7"
+                    placeholder="+7"
+                  />
                 </div>
                 <div class="field">
-                  <label>Sleep Hours (24-hour format)</label>
-
-                  <div class="sleep-grid">
-                    <div>
-                      <input
-                        type="number"
-                        id="quietStart"
-                        name="quietStart"
-                        min="0"
-                        max="23"
-                        value="23"
-                        placeholder="23"
-                      />
-                      <div class="sleep-label">Start</div>
-                    </div>
-
-                    <div>
-                      <input
-                        type="number"
-                        id="quietEnd"
-                        name="quietEnd"
-                        min="0"
-                        max="23"
-                        value="7"
-                        placeholder="7"
-                      />
-                      <div class="sleep-label">End</div>
-                    </div>
-                  </div>
+                  <label for="ntpSyncDays">NTP Sync Interval (days)</label>
+                  <input
+                    type="number"
+                    id="ntpSyncDays"
+                    name="ntpSyncDays"
+                    min="1"
+                    max="7"
+                    value="7"
+                    placeholder="7"
+                  />
                 </div>
+                <div class="field">
+                  <label for="ntpReSyncDays"
+                    >NTP Sync Retry Interval (days)</label
+                  >
+                  <input
+                    type="number"
+                    id="ntpReSyncDays"
+                    name="ntpReSyncDays"
+                    min="1"
+                    max="3"
+                    value="1"
+                    placeholder="1"
+                  />
+                </div>
+
                 <div class="toggle-field">
                   <div>
                     <div class="toggle-label">Use 12-hour Format</div>
@@ -254,39 +211,187 @@
                     ></span
                   ></label>
                 </div>
-                <div class="toggle-field">
-                  <div>
-                    <div class="toggle-label">Use Sleep Hours</div>
-                    <div class="toggle-sub">
-                      Let your clock sleep during inactive time
-                    </div>
+                <button type="submit" class="btn-save">
+                  Save Clock Settings
+                </button>
+              </form>
+            </div>
+            <!-- Alarms -->
+            <div class="card">
+              <div class="card-title">
+                <h2>Alarms</h2>
+                (features not yet available)
+                <span class="card-title-tag" id="alarmCount">0 / 3</span>
+              </div>
+
+              <div id="alarmsList"></div>
+
+              <button
+                type="button"
+                class="btn-action primary"
+                id="addAlarmBtn"
+                style="width: 100%; margin-bottom: 16px"
+                disabled
+              >
+                + Add Alarm
+              </button>
+
+              <button type="button" class="btn-save" id="saveAlarmsBtn" disabled>
+                Save Alarms
+              </button>
+            </div>
+
+            <template id="alarmRowTpl">
+              <div class="alarm-row compact">
+                <!-- Header -->
+                <div class="alarm-header">
+                  <input
+                    class="alarm-name"
+                    type="text"
+                    maxlength="15"
+                    placeholder="Alarm"
+                  />
+
+                  <div class="alarm-actions">
+                    <label class="switch sm">
+                      <input class="alarm-enabled" type="checkbox" checked />
+                      <span class="slider"></span>
+                    </label>
+
+                    <button class="alarm-remove" type="button" title="Delete">
+                      Delete
+                    </button>
                   </div>
-                  <label class="switch"
-                    ><input
-                      type="checkbox"
-                      id="quietEnabled"
-                      name="quietEnabled" /><span class="slider"></span
-                  ></label>
                 </div>
-                <div class="toggle-field">
-                  <div>
-                    <div class="toggle-label">Enable Power Saving Mode</div>
-                    <div class="toggle-sub">
-                      Using Deepsleep feature to save battery life
-                    </div>
+
+                <!-- Time -->
+                <div class="alarm-time">
+                  <input
+                    class="alarm-hour"
+                    type="number"
+                    min="1"
+                    max="12"
+                    value="7"
+                  />
+
+                  <span>:</span>
+
+                  <input
+                    class="alarm-minute"
+                    type="number"
+                    min="0"
+                    max="59"
+                    value="00"
+                  />
+
+                  <select class="alarm-period">
+                    <option value="AM" selected>AM</option>
+                    <option value="PM">PM</option>
+                  </select>
+                </div>
+
+                <!-- Days -->
+                <div class="repeat-days">
+                  <button class="day-btn" data-bit="1">S</button>
+                  <button class="day-btn" data-bit="2">M</button>
+                  <button class="day-btn" data-bit="4">T</button>
+                  <button class="day-btn" data-bit="8">W</button>
+                  <button class="day-btn" data-bit="16">T</button>
+                  <button class="day-btn" data-bit="32">F</button>
+                  <button class="day-btn" data-bit="64">S</button>
+                </div>
+
+                <!-- Expand -->
+                <button type="button" class="alarm-expand">
+                  <span class="arrow">▼</span>
+                  <span class="summary">
+                    Snooze:
+                    <span class="sum-min">5</span> min •
+                    <span class="sum-repeat">2</span>x •
+                    <span class="sum-sound">Beep</span>
+                  </span>
+                  </span>
+                </button>
+
+                <!-- Hidden -->
+                <div class="alarm-extra">
+                  <div class="setting">
+                    <label>Minutes</label>
+
+                    <select class="alarm-snooze-min">
+                      <option>1</option>
+                      <option>3</option>
+                      <option selected>5</option>
+                      <option>10</option>
+                      <option>15</option>
+                      <option>20</option>
+                      <option>30</option>
+                    </select>
                   </div>
-                  <label class="switch"
-                    ><input
-                      type="checkbox"
-                      id="powerSave"
-                      name="powerSave" /><span class="slider"></span
-                  ></label>
+
+                  <div class="setting">
+                    <label>Repeat</label>
+
+                    <select class="alarm-snooze-repeat">
+                      <option>0</option>
+                      <option>1</option>
+                      <option selected>2</option>
+                      <option>3</option>
+                      <option>5</option>
+                      <option>10</option>
+                    </select>
+                  </div>
+
+                  <div class="setting">
+                    <label>Sound</label>
+
+                    <select class="alarm-snooze-sound">
+                      <option value="1">Beep</option>
+                      <option value="2">Chime</option>
+                      <option value="3">Buzz</option>
+                    </select>
+                  </div>
                 </div>
-                <div class="toggle-field">
+              </div>
+            </template>
+          </div>
+
+          <!-- Display -->
+          <div class="tab-panel" id="panel-display">
+            <div class="card">
+              <div class="card-title">
+                <h2>Display Settings</h2>
+                <span class="card-title-tag">Display Info</span>
+              </div>
+              <form id="displayForm" method="POST" action="/save-display">
+                <div class="field">
+                  <label for="refreshMin"
+                    >Display Refresh Interval (minutes)</label
+                  >
+                  <input
+                    type="number"
+                    id="refreshMin"
+                    name="refreshMin"
+                    min="1"
+                    max="60"
+                    value="5"
+                    placeholder="5"
+                  />
+                </div>
+              <div class="field">
+                <label>Clock Styles</label>
+                <select
+                  id="clock-style" name="clockStyle">
+                  <option value="default">Default</option>
+                  <option value="khmer">Khmer</option>
+                  <option value="retro">Retro</option>
+                </select>
+              </div>        
+              <div class="toggle-field">
                   <div>
                     <div class="toggle-label">Show Battery Percentage</div>
                     <div class="toggle-sub">
-                      Show battery percentage next to battery icon
+                      Show battery percentage next to battery icon (will only show if power saving mode is on)
                     </div>
                   </div>
                   <label class="switch"
@@ -309,7 +414,7 @@
                       checked /><span class="slider"></span
                   ></label>
                 </div>
-                <div class="toggle-field" style="margin-bottom: 16px">
+                <div class="toggle-field">
                   <div>
                     <div class="toggle-label">Show Temperature</div>
                     <div class="toggle-sub">
@@ -340,7 +445,7 @@
                   ></label>
                 </div>
                 <button type="submit" class="btn-save">
-                  Save Clock Settings
+                  Save Display Settings
                 </button>
               </form>
             </div>
@@ -437,10 +542,6 @@
                 >
               </div>
             </div>
-          </div>
-
-          <!-- Device -->
-          <div class="tab-panel" id="panel-device">
             <div class="card">
               <div class="card-title">
                 <h2>Hostname</h2>
@@ -488,15 +589,80 @@
             </div>
           </div>
 
-          <!-- Actions -->
-          <div class="tab-panel" id="panel-actions">
+          <!-- Device -->
+          <div class="tab-panel" id="panel-device">
+            <div class="card">
+              <div class="card-title">
+                <h2>Power Saving</h2>
+                <span class="card-title-tag">Power Settings</span>
+              </div>
+              <form id="deviceForm" method="POST" action="/save-device">
+                <div class="field">
+                  <label>Sleep Hours (24-hour format)</label>
+                  <div class="sleep-grid">
+                    <div>
+                      <input
+                        type="number"
+                        id="quietStart"
+                        name="quietStart"
+                        min="0"
+                        max="23"
+                        value="23"
+                        placeholder="23"
+                      />
+                      <div class="sleep-label">Start</div>
+                    </div>
+                    <div>
+                      <input
+                        type="number"
+                        id="quietEnd"
+                        name="quietEnd"
+                        min="0"
+                        max="23"
+                        value="7"
+                        placeholder="7"
+                      />
+                      <div class="sleep-label">End</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="toggle-field">
+                  <div>
+                    <div class="toggle-label">Use Sleep Hours</div>
+                    <div class="toggle-sub">
+                      Let your clock sleep during inactive time
+                    </div>
+                  </div>
+                  <label class="switch"
+                    ><input
+                      type="checkbox"
+                      id="quietEnabled"
+                      name="quietEnabled" /><span class="slider"></span
+                  ></label>
+                </div>
+                <div class="toggle-field">
+                  <div>
+                    <div class="toggle-label">Enable Power Saving Mode</div>
+                    <div class="toggle-sub">
+                      Using Deepsleep feature to save battery life
+                    </div>
+                  </div>
+                  <label class="switch"
+                    ><input
+                      type="checkbox"
+                      id="powerSave"
+                      name="powerSave" /><span class="slider"></span
+                  ></label>
+                </div>
+                <button type="submit" class="btn-save">
+                  Save Clock Settings
+                </button>
+              </form>
+            </div>
             <div class="card">
               <div class="card-title">
                 <h2>Controls</h2>
-                <span class="card-title-tag">Controls</span>
-              </div>
-              <div style="margin: 18px 0 12px">
-                <div class="slabel">Quick Controls</div>
+                <span class="card-title-tag">Quick Controls</span>
               </div>
               <div class="btn-grid">
                 <button
@@ -519,9 +685,9 @@
                 </button>
                 <button
                   class="btn-action"
-                  onclick="doAction('info', 'Open serial monitor in browser?')"
+                  onclick="doAction('user_factory', 'Factory reset now? This will erase everything!?')"
                 >
-                  Serial Log
+                  Factory Reset
                 </button>
                 <button
                   class="btn-action danger"
@@ -543,12 +709,13 @@
               </div>
             </div>
           </div>
+
           <!-- OTA Panel -->
           <div class="tab-panel" id="panel-ota">
             <div class="card">
               <div class="card-title">
                 <h2>OTA Firmware Update</h2>
-                <span class="card-title-tag">Update</span>
+                <span class="card-title-tag">OTA Update</span>
               </div>
 
               <!-- Version info -->
@@ -736,7 +903,7 @@
                 <div class="info-row">
                   <span class="info-key">Display</span>
                   <span class="info-val" id="disDrvVal">
-                    e-Paper 2.66&quot; B/W/R/Y
+                    e-Paper 2.66&quot; B/W/R
                   </span>
                 </div>
 

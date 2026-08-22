@@ -7,8 +7,8 @@
 
 #include "wifi_mgr.h"
 
-#define NTP_INTERVAL_SEC ((uint32_t)cfg.clockCfg.ntpSyncDays * 24 * 3600)
-#define NTP_RETRY_SEC ((uint32_t)cfg.clockCfg.ntpReSyncDays * 24 * 3600)
+#define NTP_INTERVAL_SEC ((uint32_t)cfg.clock.ntpSyncDays * 24 * 3600)
+#define NTP_RETRY_SEC ((uint32_t)cfg.clock.ntpReSyncDays * 24 * 3600)
 
 extern uint32_t rtcNvBootCount;
 extern uint32_t rtcNvLastNtpEpoch;

@@ -15,12 +15,7 @@
 #define SENSOR_INTERVAL       10000UL
 #define WIFI_CONNECT_TIMEOUT  10000UL   // 10s to connect
 
-void init_fs();
-void load_config();
-void save_config();
 bool wifi_init();
-void factory_reset();
-void erase_config();
 void maintainWifi();
 
 #endif //WIFI_MGR_H

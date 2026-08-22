@@ -62,9 +62,9 @@
     }
 
     .portal-header .brand-icon {
-        font-size: 26px;
+        font-size: 30px;
         line-height: 1;
-        filter: drop-shadow(0 0 10px rgba(245, 158, 11, .6));
+        filter: drop-shadow(0 0 5px rgba(245, 158, 11, .6));
         margin: 0
     }
 
@@ -509,10 +509,18 @@
     .slabel {
         font-size: 10px;
         font-weight: 600;
-        color: var(--muted);
+        color: var(--muted_c);
         text-transform: uppercase;
         letter-spacing: 1.3px;
         margin-bottom: 8px;
+        font-family: 'DM Mono', monospace
+    }
+
+    .slabel2 {
+        font-size: 10px;
+        font-weight: 600;
+        color: var(--muted);
+        text-transform: uppercase;
         font-family: 'DM Mono', monospace
     }
 
@@ -944,6 +952,204 @@
 
     .info-val.accent {
         color: var(--accent)
+    }
+
+    /* ── Alarms ── */
+    .alarm-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    .alarm-name {
+        flex: 1;
+        min-width: 0;
+        background: transparent !important;
+        border: 1px solid var(--border);
+        border-radius: 8px !important;
+        padding: 6px !important;
+        font-size: 15px;
+        font-weight: 500;
+        color: var(--text);
+    }
+
+    .alarm-name:focus {
+        box-shadow: none !important;
+    }
+
+    .alarm-row {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 14px;
+        margin-bottom: 12px;
+        transition: .2s;
+    }
+
+    .alarm-row:hover {
+        border-color: rgba(245, 158, 11, .45);
+    }
+
+    .alarm-actions {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .alarm-time {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+        margin: 10px 0;
+    }
+
+    .alarm-time input,
+    .alarm-period {
+        width: 70px;
+        height: 48px;
+        padding: 0;
+        text-align: center;
+        font-size: 26px;
+        font-weight: 700;
+        border-radius: 10px;
+        font-family: "DM Mono", monospace;
+    }
+
+    .alarm-time span {
+        font-size: 22px;
+        opacity: .6;
+    }
+
+    .repeat-days {
+        display: flex;
+        justify-content: center;
+        gap: 6px;
+        margin-bottom: 10px;
+    }
+
+    .alarm-expand {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+        padding: 10px;
+        margin-top: 4px;
+        background: rgba(255, 255, 255, .03);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        color: var(--sub);
+        cursor: pointer;
+        transition: .2s;
+    }
+
+    .alarm-expand:hover {
+        border-color: var(--accent);
+        color: var(--text);
+    }
+
+    .alarm-extra {
+        display: none;
+        margin-top: 10px;
+        border-top: 1px solid var(--border);
+        padding-top: 10px;
+    }
+
+    .alarm-extra.open {
+        display: block;
+    }
+
+    .alarm-remove {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+
+        height: 30px;
+        padding: 0 10px;
+
+        border: 1px solid #ef4444;
+        border-radius: 8px;
+
+        background: transparent;
+        color: #ef4444;
+
+        font-family: "Inter", sans-serif;
+        font-size: 13px;
+        font-weight: 500;
+
+        cursor: pointer;
+        transition: 0.2s ease;
+    }
+
+    .alarm-remove:hover {
+        background: #ef4444;
+        color: white;
+    }
+
+    .alarm-remove:active {
+        transform: scale(0.96);
+    }
+
+    .summary {
+        font-family: "DM Mono",
+            monospace;
+        font-size: 14px;
+        font-weight: 500;
+        letter-spacing: 0.2px;
+        color: #9ca3af;
+    }
+
+    .sum-min,
+    .sum-repeat {
+        font-weight: 600;
+        color: #ffffff;
+    }
+
+    .sum-sound {
+        font-weight: 500;
+        color: #60a5fa;
+    }
+
+    .setting {
+        display: grid;
+        grid-template-columns: 90px 1fr;
+        align-items: center;
+        gap: 10px;
+        margin: 10px 0;
+    }
+
+    .setting label {
+        margin: 0;
+    }
+
+    .setting select {
+        width: 120px;
+    }
+
+    .day-btn {
+        width: 30px;
+        height: 30px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--sub);
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: .2s;
+    }
+
+    .day-btn:hover {
+        border-color: var(--accent);
+    }
+
+    .day-btn.on {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #111;
     }
 
     /* ── OTA progress ── */

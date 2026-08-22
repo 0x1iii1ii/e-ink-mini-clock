@@ -65,38 +65,40 @@ uint8_t g_batteryPct = 0;
 bool    g_isVbusConnected = false;
 bool    g_powerSaveMode = true;
 
+bool lastB1 = HIGH;
+bool lastB2 = HIGH;
 
 // ════════════════════════════════════════════════════════════
 //  Setup
 // ════════════════════════════════════════════════════════════
 void setup() {
-  Serial.begin(115200);
-  // Short delay only on first boot; skip on subsequent wakes to save time
-  // if (rtcNvBootCount == 0) delay(2000);
-  delay(3000);  // wait for serial monitor
-
+  Serial0.begin(115200);
+  delay(500);
   // ── Load config from LittleFS ─────────────────────────
   init_fs();
   rtcNvBootCount++;
 
-  Serial.println("\n=== e-ink Mini Clock booting... ===");
-  Serial.printf("Firmware version: %s\n", FW_VERSION);
-  Serial.printf("build: %s %s\n", __DATE__, __TIME__);
-  Serial.printf("\n=== ePaper Clock  wake #%u ===\n", rtcNvBootCount);
+  Serial0.println("\n=== ★ e-ink Mini Clock ★ ===");
+  Serial0.printf("Firmware version: v%s\n", FW_VERSION);
+  Serial0.printf("build: %s %s\n", __DATE__, __TIME__);
+  Serial0.println("Github: https://github.com/0x1iii1ii");
+  Serial0.println("Facebook: https://www.facebook.com/liisengxyz");
+  Serial0.printf("\n=== ePaper Clock  wake #%u ===\n", rtcNvBootCount);
+  Serial0.printf("Wakeup cause: %d\n", esp_sleep_get_wakeup_cause());
 
   // ── I2C initialization ────────────────────────────────
   Wire.begin(I2C_SDA, I2C_SCL);
   Wire.setClock(400000);
-  Serial.println("I2C initialized.");
+  Serial0.println("I2C initialized.");
   delay(100);
 
 #ifdef DEBUG
   // Optional I2C scan (debug)
-  Serial.println("Scanning I2C sensor devices...");
+  Serial0.println("Scanning I2C sensor devices...");
   for (uint8_t addr = 1; addr < 127; addr++) {
     Wire.beginTransmission(addr);
     if (Wire.endTransmission() == 0)
-      Serial.printf("Found: 0x%02X\n", addr);
+      Serial0.printf("Found: 0x%02X\n", addr);
   }
 #endif
 
@@ -105,31 +107,52 @@ void setup() {
   delay(100);
   rtc_init();
   delay(100);
-  if (!epd_init()) {
-    Serial.println("e-Paper init failed — going to sleep");
-    goToDeepSleep();
-  }
+  epd_init();
 
-  // ── GPIO (charger / VBUS sense) ──────────────────────
-  pinMode(USER_BUTTON, INPUT);
+  // I/O pin setup
+  pinMode(B1_PIN, INPUT);
+  pinMode(B2_PIN, INPUT);
+  pinMode(BZ_PIN, OUTPUT);
   pinMode(VBUS_PIN, INPUT);
+
+  // deepsleep pin trigger to wakeup or wake on both user button press
+  esp_deep_sleep_enable_gpio_wakeup(
+    (1ULL << B1_PIN) | (1ULL << B2_PIN),
+    ESP_GPIO_WAKEUP_GPIO_LOW
+  );
+  // Wake on VBUS going HIGH 
+  esp_deep_sleep_enable_gpio_wakeup(
+    (1ULL << VBUS_PIN),
+    ESP_GPIO_WAKEUP_GPIO_HIGH
+  );
+
+  delay(100);
+  // will only play startup sound if not waking from deep sleep
+  if (getResetReason() != ESP_RST_DEEPSLEEP) {
+    startUpSound();
+  }
 
   // ── Optional boot splash screen ───────────────────────
   // if (g_enSplash) boot_splash();
 
-  // ── Read sensors (fast, no WiFi needed) ──────────────
+  // ── Read sensors ──────────────────────────────────────
   g_batteryPct = readBattery();
   g_isVbusConnected = isVbusConnected();
 
   // ── First boot / factory state ────────────────────────
-  if (strlen(cfg.wifi->ssid) == 0 || strlen(cfg.wifi->password) == 0) {
-    Serial.println("No WiFi configured — entering portal mode");
+  if (strlen(cfg.wifi.wifi->ssid) == 0 || strlen(cfg.wifi.wifi->password) == 0) {
+    Serial0.println("No WiFi configured — entering setup mode");
     enterPortalMode(true);
+  }
+  // both user buttons held down on boot => enter setup mode
+  if (digitalRead(B1_PIN) == LOW && digitalRead(B2_PIN) == LOW) {
+    Serial0.println("Both buttons held — entering setup mode");
+    enterPortalMode(true, true);
   }
 
   // ── Power saving mode ───────────────────────────────────
-  if (!cfg.clockCfg.powerSave) {
-    Serial.println("Power save mode: OFF — full features enabled");
+  if (!cfg.device.powerSave) {
+    Serial0.println("Power save mode: OFF — full features enabled");
     g_powerSaveMode = false;
     // ── WiFi initialization ──────────────────────────────
     if (wifi_init()) web_init(); // start web server only if WiFi connected
@@ -137,33 +160,47 @@ void setup() {
     drawDisplay();
   }
   else {
-    // ── Portal mode check (GPIO0/BOOT held LOW) ───────────
-    // if (WakeButtonHeld()) {
-    //   Serial.println("Portal button held — entering setup mode");
-    //   enterPortalMode();
-    // }
     // ── NTP sync (WiFi only when needed) ─────────────────
     if (shouldSyncNtp()) {
       doNtpSync();
     }
     else {
-      // // Restore system clock from RTC (no WiFi needed)
-      // restore_rtc();
-      Serial.println("Clock from RTC — skipped sync");
+      // Restore system clock from RTC (no WiFi needed)
+      restore_rtc();
+      Serial0.println("Clock from RTC — skipped sync");
     }
+
     // ── Draw display ─────────────────────────────────────
     drawDisplay();
-    // ── spawn the web for the first power on ───────────────
+
+    // ── spawn the web for the first time power on ───────────────
     if (rtcNvBootCount == 1) {
-      Serial.println("First boot — entering portal mode");
+      Serial0.println("First boot — entering portal mode");
       enterPortalMode();   // blocks for 60 s then sleeps
     }
     else {
-      Serial.println("going to sleep");
-      goToDeepSleep();
+      switch (esp_sleep_get_wakeup_cause()) {
+
+        // wake by timer itself (normal operation)
+      case ESP_SLEEP_WAKEUP_TIMER:
+        Serial0.println("Wakeup cause: Timer");
+        Serial0.println("going to sleep");
+        goToDeepSleep();
+        break;
+
+        // user want to enter portal mode by pressing the button
+      case ESP_SLEEP_WAKEUP_GPIO:
+        Serial0.println("Wakeup cause: GPIO");
+        enterPortalMode();   // blocks for 60 s then sleeps
+        break;
+
+        // nothing idk
+      default:
+        Serial0.println("going to sleep");
+        goToDeepSleep();
+        break;
+      }
     }
-    // // ── Go back to sleep ─────────────────────────────────
-    // goToDeepSleep();
   }
 }
 
@@ -174,33 +211,52 @@ void loop() {
   if (!g_powerSaveMode) {
     maintainWifi();
     web_loop();
-    unsigned long ms = millis();
+
+    // button
+    bool b1 = digitalRead(B1_PIN);
+    bool b2 = digitalRead(B2_PIN);
+
+    // Normal mode button handling
+    if (lastB1 == HIGH && b1 == LOW) {
+      Serial0.println("B1 Pressed");
+      beep(2500, 100);
+    }
+
+    if (lastB2 == HIGH && b2 == LOW) {
+      Serial0.println("B2 Pressed");
+      beep(1200, 80);
+      delay(50);
+      beep(1200, 80);
+    }
+
+    lastB1 = b1;
+    lastB2 = b2;
+
     // Read sensors every second for smooth display updates
-    if (ms - lastSensorRead >= 10000UL) {
+    unsigned long ms = millis();
+    if (ms - lastSensorRead >= 60000UL) {
       lastSensorRead = ms;
       aht20_read();
       g_batteryPct = readBattery();
       g_isVbusConnected = isVbusConnected();
-      Serial.println("\nUpdated Sensor Values: \n");
-      Serial.printf("AHT20: %.1f °C, %.1f %%RH\n", g_temperature, g_humidity);
-      Serial.printf("Battery: %d%%  VBUS: %d\n", g_batteryPct, g_isVbusConnected);
+      Serial0.println("\nUpdated Sensor Values: \n");
+      Serial0.printf("AHT20: %.1f °C, %.1f %%RH\n", g_temperature, g_humidity);
+      Serial0.printf("Battery: %d%%  VBUS: %d\n", g_batteryPct, g_isVbusConnected);
     }
 
     // Refresh display on schedule
-    if (ms - lastRefresh >= static_cast<unsigned long>(cfg.clockCfg.refreshMin) * 60000UL) {
+    if (ms - lastRefresh >= static_cast<unsigned long>(cfg.display.refreshMin) * 60000UL) {
       lastRefresh = ms;
-      // sync_time();
       DateTime d = rtc.now();
       lastRefreshEpoch = d.unixtime();
       drawDisplay();
     }
 
-    if (!isVbusConnected() && cfg.clockCfg.powerSave) {
-      Serial.println("USB power lost — entering power save mode");
+    if (!isVbusConnected() && cfg.device.powerSave) {
+      Serial0.println("USB power lost — entering power save mode");
       g_powerSaveMode = true;
       goToDeepSleep();
     }
-
-    delay(10);
   }
+  delay(1);
 }

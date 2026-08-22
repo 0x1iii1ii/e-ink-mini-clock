@@ -9,7 +9,7 @@ String g_logBuf = "";
 bool   g_serialEnabled = true;
 
 void webLog(const String& msg) {
-    Serial.println(msg);           // still prints to USB serial as normal
+    Serial0.println(msg);           // still prints to USB serial as normal
     if (!g_serialEnabled) return;
     g_logBuf += msg + "\n";
     if (g_logBuf.length() > LOG_BUF_SIZE)

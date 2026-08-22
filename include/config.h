@@ -13,6 +13,7 @@
 #define DEBUG
 #define SERIAL_BUF_SIZE 4096
 #define LOG_BUF_SIZE 4096
+
 // ============================================================================
 // CONFIG — edit these defaults
 // ============================================================================
@@ -29,18 +30,22 @@
 #define WEB_SPAWN_TIMEOUT_MS 90000UL  // 1.5 minutes to configure before sleeping
 #define WEB_SPAWN_SETUP_MODE_MS 900000UL  // 15 minutes in setup mode before sleeping
 
+#define MAX_ALARMS 3
 // ============================================================================
 // PINS
 // ============================================================================
 
 // I2C pins for AHT20 and RTC PCF8563T
 #define I2C_SDA   9    // GPIO9
-#define I2C_SCL   3    // GPIO3
+#define I2C_SCL   10    // GPIO3
 
 // e-Paper pins (Waveshare 2.66" G)
 #define TFT_CS  16  // D0
 #define TFT_RST 12  // D6
 #define TFT_DC  15  // D8
+#define B1_PIN  4
+#define B2_PIN  1
+#define BZ_PIN  18
 
 // Screen dimensions and offsets
 #define COL_OFFSET 1
@@ -58,7 +63,7 @@
 
 // ADC pins for battery monitoring
 #define BATTRY_ADC  0    // GPIO2, ADC channel — voltage divider (100k/100k) 
-#define USER_BUTTON 8    // GPIO8, digital input — User button
-#define VBUS_PIN    10    // GPIO0, digital input — USB charger connected
+// #define USER_BUTTON 4    // GPIO8, digital input — User button
+#define VBUS_PIN    3    // GPIO0, digital input — USB charger connected
 
 #endif //CONFIG_MGR_H
