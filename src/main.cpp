@@ -166,7 +166,7 @@ void setup() {
     }
     else {
       // Restore system clock from RTC (no WiFi needed)
-      restore_rtc();
+      // restore_rtc();
       Serial0.println("Clock from RTC — skipped sync");
     }
 
