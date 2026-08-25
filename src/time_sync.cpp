@@ -14,7 +14,7 @@ RTC_PCF8563    rtc;
 
 RTC_DATA_ATTR uint32_t  rtcNvBootCount = 0;  // total wake count
 RTC_DATA_ATTR uint32_t  rtcNvLastNtpEpoch = 0;  // epoch of last successful NTP sync
-RTC_DATA_ATTR bool      rtcNvNtpPending = true; // true = need a sync this wake
+RTC_DATA_ATTR bool      rtcNvNtpPending = false; // no sync attempted yet for the first boot
 RTC_DATA_ATTR uint8_t   rtcNvRetryDays = 0;   // days since last failed sync
 
 // ════════════════════════════════════════════════════════════
@@ -26,18 +26,9 @@ void rtc_init() {
     Serial0.print("Init RTC PCF8563... ");
     if (!rtc.begin()) {
         Serial0.println("FAILED — check wiring");
+        return;
     }
-    else {
-        Serial0.println("OK");
-        // Initialise RTC to compile time only if it has lost power
-        if (rtc.lostPower()) {
-            Serial0.println("RTC lost power — setting compile-time date");
-            rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
-        }
-        else {
-            Serial0.println("RTC battery OK — time preserved");
-        }
-    }
+    Serial0.println("OK");
 }
 
 /**
@@ -131,7 +122,6 @@ bool sync_time() {
 
 void doNtpSync() {
     Serial0.println("NTP: connecting WiFi...");
-
     // Brief WiFi connection — timeout 12 s
     WiFi.setHostname(cfg.wifi.hostname);
     WiFi.mode(WIFI_STA);
@@ -142,14 +132,9 @@ void doNtpSync() {
         delay(200);
         Serial0.print('.');
     }
+    Serial0.println();
 
     if (WiFi.status() != WL_CONNECTED) {
-        Serial0.println("\nNTP: WiFi failed — keeping RTC time, retry in 24 h");
-        // restore_rtc();
-        rtcNvNtpPending = true;
-        // Update last-attempt time so retry fires 24 h from now
-        DateTime now = rtc.now();
-        rtcNvLastNtpEpoch = now.unixtime();
         if (rtcNvBootCount == 1) {
             // WiFi.disconnect(true);
             WiFi.mode(WIFI_OFF);
@@ -160,6 +145,13 @@ void doNtpSync() {
             Serial0.println("AP IP: " + WiFi.softAPIP().toString());
         }
         else {
+            Serial0.printf("\nNTP: WiFi failed — keeping RTC time, retry in %d day(s)\n", NTP_RETRY_SEC / 86400);
+            // restore_rtc();
+            rtcNvNtpPending = true;
+            // Update last-attempt time
+            DateTime now = rtc.now();
+            rtcNvLastNtpEpoch = now.unixtime();
+            delay(1000);
             WiFi.disconnect(true);
             WiFi.mode(WIFI_OFF);
         }
@@ -175,10 +167,15 @@ void doNtpSync() {
         rtcNvRetryDays = 0;
     }
     else {
-        Serial0.println("NTP: sync failed — retry in 24 h");
-        rtcNvNtpPending = true;
-        DateTime d = rtc.now();
-        rtcNvLastNtpEpoch = d.unixtime();
+        if (rtcNvBootCount == 1) {
+            Serial0.println("NTP: sync failed — skip retry (first boot)");
+        }
+        else {
+            Serial0.printf("NTP: sync failed — retry in %d day(s)\n", NTP_RETRY_SEC / 86400);
+            rtcNvNtpPending = true;
+            DateTime d = rtc.now();
+            rtcNvLastNtpEpoch = d.unixtime();
+        }
     }
 
     if (rtcNvBootCount != 1) {
@@ -194,8 +191,8 @@ void doNtpSync() {
 // ════════════════════════════════════════════════════════════
 
 bool shouldSyncNtp() {
-    // Always sync on very first boot (NVRAM wiped = no epoch stored)
-    if (rtcNvLastNtpEpoch == 0) {
+    // Always sync on very first boot
+    if (rtcNvBootCount == 1) {
         Serial0.println("NTP: first boot — sync needed");
         return true;
     }

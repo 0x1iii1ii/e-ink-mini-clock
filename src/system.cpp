@@ -88,6 +88,10 @@ void goToDeepSleep() {
     // WiFi.disconnect(true);
     // WiFi.mode(WIFI_OFF);
     uint32_t sleepSec = effectiveRefreshSec();
+    // Adjust sleep time for first boot to avoid waking up too late
+    if (rtcNvBootCount == 1 && cfg.display.refreshMin > 1) {
+        sleepSec = sleepSec - 90;
+    }
     uint64_t sleepUs = (uint64_t) sleepSec * 1000000ULL;
     if (isInQuietHours() && sleepSec > (cfg.display.refreshMin * 60UL)) {
         Serial0.printf(
@@ -159,7 +163,7 @@ void enterPortalMode(bool factory, bool user) {
         WiFi.mode(WIFI_OFF);
         esp_deep_sleep_start();
     }
-    goToDeepSleep();
+    goToDeepSleep();  // first boot +1.5min
 }
 
 uint32_t effectiveRefreshSec() {
